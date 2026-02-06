@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UrQuest - System Access</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="landing-wrap">
+        <div class="auth-box">
+            <h1 class="glitch" data-text="URQUEST">URQUEST</h1>
+            <p style="color:var(--secondary-color); letter-spacing:3px; margin-bottom:2rem;">SYSTEM ACCESS</p>
+            
+            <div id="auth-ui">
+                <input type="text" id="username" class="cyber-input" placeholder="CODENAME" required>
+                <input type="password" id="password" class="cyber-input" placeholder="PASSWORD" required>
+                
+                <div style="display:flex; gap:10px; margin-top:1rem;">
+                    <button onclick="app.login()" class="cyber-btn" style="flex:1">LOGIN</button>
+                    <button onclick="app.register()" class="cyber-btn secondary" style="flex:1">REGISTER</button>
+                </div>
+            </div>
+            <div id="msg-area" style="margin-top:1rem; min-height:20px; color:var(--error-color); font-size:0.8rem;"></div>
+        </div>
+    </div>
+    
+    <div id="notification-area" style="position:fixed; bottom:20px; right:20px;"></div>
+    <script src="app.js"></script> 
+</body>
+</html>

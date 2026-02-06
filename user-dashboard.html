@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UrQuest - Agent Interface</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        
+        <div style="width:100%; display:flex; flex-direction:column; height:100vh;">
+            <header style="background:rgba(0,0,0,0.8); border-bottom:1px solid #333; padding:1rem 2rem; display:flex; justify-content:space-between; align-items:center;">
+                <div style="font-family:var(--font-header); font-size:1.5rem; color:var(--primary-color);">
+                    URQUEST <span style="font-size:0.8rem; color:#fff;">// AGENT PROTOCOL</span>
+                </div>
+                
+                <div style="display:flex; gap:2rem; align-items:center;">
+                    <div style="text-align:right;">
+                        <div style="color:#888; font-size:0.7rem;">CURRENT LEVEL</div>
+                        <div style="font-size:1.5rem; font-family:var(--font-header); color:var(--secondary-color);" id="user-level">LVL -</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="color:#888; font-size:0.7rem;">XP BALANCE</div>
+                        <div style="font-size:1.5rem; font-family:var(--font-header); color:var(--primary-color);" id="user-xp">0 XP</div>
+                    </div>
+                    <button class="cyber-btn danger" onclick="app.logout()" style="padding:0.5rem 1rem;">LOGOUT</button>
+                </div>
+            </header>
+
+            <div style="flex:1; display:flex; overflow:hidden;">
+                <!-- SIDEBAR -->
+                <aside style="width:250px; background:#0a0a0e; border-right:1px solid #333; padding:2rem 1rem;">
+                    <div style="margin-bottom:2rem; text-align:center;">
+                        <div id="user-rank-display" style="border:1px solid var(--primary-color); padding:0.5rem; border-radius:50%; width:60px; height:60px; display:flex; align-items:center; justify-content:center; margin:0 auto 10px; font-size:1.2rem;">#?</div>
+                        <div id="username-display" style="color:#fff;">AGENT</div>
+                    </div>
+                    <nav>
+                        <a class="nav-link active" onclick="app.switchUserTab('quests')">QUEST BOARD</a>
+                        <a class="nav-link" onclick="app.switchUserTab('leaderboard')">LEADERBOARD</a>
+                        <a class="nav-link" onclick="app.switchUserTab('profile')">HISTORY</a>
+                    </nav>
+
+                    <!-- ORG SECTION -->
+                    <div style="margin-top:2rem; border-top:1px solid #333; padding-top:1rem;">
+                        <div style="color:#888; font-size:0.7rem; margin-bottom:10px;">ORGANIZATION AFFILIATION</div>
+                        
+                        <!-- CASE 1: No Org -->
+                        <div id="org-none-ui">
+                            <button class="cyber-btn secondary" onclick="app.showCreateOrgModal()" style="width:100%; font-size:0.8rem;">CREATE ORGANIZATION</button>
+                            <div style="text-align:center; font-size:0.7rem; color:#666; margin-top:5px;">OR JOIN ONE [Locked]</div>
+                        </div>
+
+                        <!-- CASE 2: Has Org -->
+                        <div id="org-exists-ui" style="display:none; text-align:center;">
+                            <div id="my-org-name" style="color:var(--secondary-color); font-weight:bold; margin-bottom:10px;">ORG NAME</div>
+                            <button class="cyber-btn" onclick="window.location.href='org-dashboard.html'" style="width:100%; font-size:0.8rem;">MANAGE ORG</button>
+                        </div>
+                    </div>
+                </aside>
+
+                <main class="main-content" style="background: url('grid.png');"> 
+                    
+                    <!-- TAB: QUESTS -->
+                    <section id="tab-quests" class="active">
+                        <h2 style="border-bottom:1px solid #333; padding-bottom:0.5rem;">AVAILABLE MISSIONS</h2>
+                        <div id="quest-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:1.5rem; margin-top:1.5rem;"></div>
+                    </section>
+
+                    <!-- TAB: LEADERBOARD -->
+                    <section id="tab-leaderboard" style="display:none">
+                        <h2 style="border-bottom:1px solid #333; padding-bottom:0.5rem;">TOP AGENTS</h2>
+                        <table style="width:100%; border-collapse:collapse; margin-top:1rem;">
+                            <thead>
+                                <tr style="text-align:left; color:#888;">
+                                    <th style="padding:10px;">RANK</th>
+                                    <th style="padding:10px;">AGENT</th>
+                                    <th style="padding:10px;">TOTAL XP</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaderboard-body"></tbody>
+                        </table>
+                    </section>
+
+                    <!-- TAB: HISTORY/PROFILE -->
+                    <section id="tab-profile" style="display:none">
+                        <h2 style="border-bottom:1px solid #333; padding-bottom:0.5rem;">MISSION LOG</h2>
+                        <div id="history-list" style="margin-top:1rem; display:flex; flex-direction:column; gap:0.8rem;"></div>
+                    </section>
+
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: SUBMISSION -->
+    <div id="submission-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100; align-items:center; justify-content:center; backdrop-filter:blur(5px);">
+        <div class="cyber-card" style="width:100%; max-width:500px; background:#000;">
+            <h3 style="color:var(--primary-color);">SUBMIT PROOF</h3>
+            <p style="color:#888; margin-bottom:1rem;">Provide evidence of mission completion.</p>
+            <input type="hidden" id="modal-task-id">
+            <input type="url" id="proof-link" class="cyber-input" placeholder="https://..." required>
+            <div style="display:flex; gap:10px; margin-top:1rem;">
+                <button class="cyber-btn" onclick="app.submitProof()" style="flex:1;">UPLOAD</button>
+                <button class="cyber-btn danger" onclick="document.getElementById('submission-modal').style.display='none'" style="flex:1;">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CREATE ORG -->
+    <div id="create-org-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100; align-items:center; justify-content:center; backdrop-filter:blur(5px);">
+        <div class="cyber-card" style="width:100%; max-width:500px; background:#000;">
+            <h3 style="color:var(--secondary-color);">ESTABLISH ORGANIZATION</h3>
+            <p style="color:#888; margin-bottom:1rem;">Create a new faction.</p>
+            <input type="text" id="new-org-name" class="cyber-input" placeholder="ORGANIZATION NAME" required>
+            <div style="display:flex; gap:10px; margin-top:1rem;">
+                <button class="cyber-btn secondary" onclick="app.createOrg()" style="flex:1;">ESTABLISH</button>
+                <button class="cyber-btn danger" onclick="document.getElementById('create-org-modal').style.display='none'" style="flex:1;">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification-area" style="position:fixed; bottom:20px; right:20px;"></div>
+    <script src="app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            app.initUser();
+        });
+    </script>
+</body>
+</html>
