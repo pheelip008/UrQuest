@@ -3,104 +3,183 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UrQuest - Org Command</title>
+    <title>UrQuest - Organization Command</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="dashboard-container">
-        <!-- SIDEBAR -->
-        <aside class="sidebar">
-            <h2 class="glitch" data-text="CMD" style="font-size:1.2rem; text-align:center;">ORG // CMD</h2>
-            <div style="margin-bottom:2rem; text-align:center;">
-                <span id="org-name-display" style="color:var(--primary-color)">LOADING...</span>
-            </div>
-            
-            <nav>
-                <a class="nav-link active" onclick="app.switchOrgTab('dashboard')">DASHBOARD</a>
-                <a class="nav-link" onclick="app.switchOrgTab('create')">CREATE TASK</a>
-                <a class="nav-link" onclick="app.switchOrgTab('reviews')">REVIEWS <span id="pending-count-badge" class="badge Hard" style="display:none">0</span></a>
-            </nav>
-
-            <div style="margin-top:auto">
-                <button class="cyber-btn danger" onclick="app.logout()" style="width:100%; font-size:0.8rem;">TERMINATE SESSION</button>
-            </div>
-        </aside>
-
-        <!-- MAIN CONTENT -->
-        <main class="main-content">
-            
-            <!-- VIEW: DASHBOARD STATS -->
-            <section id="view-dashboard" class="active">
-                <h1>MISSION CONTROL</h1>
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-number" id="stat-active-tasks">-</div>
-                        <div class="stat-label">ACTIVE OPERATIONS</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number" id="stat-pending-reviews">-</div>
-                        <div class="stat-label">PENDING REVIEWS</div>
+        
+        <div style="width:100%; display:flex; flex-direction:column; height:100vh;">
+            <header style="background:rgba(0,0,0,0.8); border-bottom:1px solid #333; padding:1rem 2rem; display:flex; justify-content:space-between; align-items:center;">
+                <div style="font-family:var(--font-header); font-size:1.5rem; color:var(--primary-color);">
+                    URQUEST <span style="font-size:0.8rem; color:#fff;">// ORGANIZATION COMMAND</span>
+                </div>
+                <div style="display:flex; gap:2rem; align-items:center;">
+                    <div style="text-align:right;">
+                        <div style="color:#888; font-size:0.7rem;">FACTION</div>
+                        <div style="font-size:1.5rem; font-family:var(--font-header); color:var(--secondary-color);" id="org-name-display">LOADING...</div>
                     </div>
                 </div>
-                <div class="cyber-card">
-                    <h3>SYSTEM STATUS</h3>
-                    <p style="color:#888;">ALL SYSTEMS NOMINAL. READY FOR TASK DEPLOYMENT.</p>
-                </div>
-            </section>
+            </header>
 
-            <!-- VIEW: CREATE TASK -->
-            <section id="view-create" style="display:none">
-                <h1>DEPLOY NEW TASK</h1>
-                <div class="cyber-card" style="max-width:600px">
-                    <form id="create-task-form">
-                        <label>MISSION TITLE</label>
-                        <input type="text" id="task-title" class="cyber-input" required>
+            <div style="flex:1; display:flex; overflow:hidden;">
+                <!-- SIDEBAR -->
+                <aside style="width:250px; background:#0a0a0e; border-right:1px solid #333; padding:2rem 1rem;">
+                    <nav>
+                        <a class="nav-link active" onclick="app.switchOrgTab('dashboard')">DASHBOARD</a>
+                        <a class="nav-link" onclick="app.switchOrgTab('create')">DEPLOY TASK</a>
+                        <a class="nav-link" onclick="app.switchOrgTab('reviews')">TRANSMISSIONS</a>
+                        <a class="nav-link" onclick="app.switchOrgTab('settings')">SETTINGS</a>
+                    </nav>
+                    <div style="margin-top:auto; padding-top:2rem;">
+                         <button class="cyber-btn secondary" onclick="window.location.href='user-dashboard.html'" style="width:100%; font-size:0.8rem;">RETURN TO FIELD</button>
+                    </div>
+                </aside>
 
-                        <label>DESCRIPTION</label>
-                        <textarea id="task-desc" class="cyber-input" rows="4" style="resize:vertical"></textarea>
-
-                        <div style="display:flex; gap:10px;">
-                            <div style="flex:1">
-                                <label>XP REWARD</label>
-                                <input type="number" id="task-xp" class="cyber-input" required>
+                <main class="main-content" style="background: url('grid.png');">
+                    
+                    <!-- TAB: DASHBOARD -->
+                    <section id="view-dashboard" class="active">
+                        <h2>OPS OVERVIEW</h2>
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1.5rem; margin-top:1.5rem;">
+                            <div class="cyber-card">
+                                <div style="color:#888; font-size:0.8rem;">ACTIVE MISSIONS</div>
+                                <div style="font-size:2.5rem; color:var(--primary-color);" id="stat-active-tasks">-</div>
                             </div>
-                            <div style="flex:1">
-                                <label>DIFFICULTY</label>
-                                <select id="task-diff" class="cyber-input">
-                                    <option value="Easy">EASY</option>
-                                    <option value="Medium">MEDIUM</option>
-                                    <option value="Hard">HARD</option>
-                                </select>
+                            <div class="cyber-card">
+                                <div style="color:#888; font-size:0.8rem;">PENDING REVIEWS</div>
+                                <div style="font-size:2.5rem; color:var(--secondary-color);" id="stat-pending-reviews">-</div>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <!-- TAB: CREATE TASK -->
+                    <section id="view-create" style="display:none">
+                        <h2>DEPLOY NEW MISSION</h2>
+                        <div class="cyber-card" style="max-width:600px;">
+                            <form id="create-task-form">
+                                <div class="form-group">
+                                    <label>MISSION TITLE</label>
+                                    <input type="text" id="task-title" class="cyber-input" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>BRIEFING</label>
+                                    <textarea id="task-desc" class="cyber-input" rows="4"></textarea>
+                                </div>
+                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+                                    <div class="form-group">
+                                        <label>XP REWARD</label>
+                                        <input type="number" id="task-xp" class="cyber-input" min="10" value="100" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>DIFFICULTY</label>
+                                        <select id="task-diff" class="cyber-input">
+                                            <option value="Easy">EASY</option>
+                                            <option value="Medium">MEDIUM</option>
+                                            <option value="Hard">HARD</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>DEADLINE (OPTIONAL)</label>
+                                    <input type="date" id="task-deadline" class="cyber-input">
+                                </div>
+                                <button type="submit" class="cyber-btn" style="width:100%; margin-top:1rem;">DEPLOY MISSION</button>
+                            </form>
+                        </div>
+                    </section>
+                    
+                    <!-- TAB: REVIEWS -->
+                    <section id="view-reviews" style="display:none">
+                        <h2>INCOMING TRANSMISSIONS</h2>
+                        <div id="reviews-list" style="display:grid; grid-template-columns: 1fr; gap:1rem; margin-top:1rem;"></div>
+                    </section>
+
+                    <!-- TAB: SETTINGS (ROLES + TRANSFER) -->
+                    <section id="view-settings" style="display:none">
+                        
+                        <!-- Role Creation -->
+                        <h2>ROLE MANAGEMENT</h2>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:2rem;">
+                            <!-- Create Role -->
+                            <div class="cyber-card">
+                                <h3 style="color:var(--primary-color); margin-bottom:1rem;">CREATE NEW ROLE</h3>
+                                <form id="create-role-form">
+                                    <div class="form-group">
+                                        <label>ROLE NAME</label>
+                                        <input type="text" id="role-name" class="cyber-input" placeholder="e.g. Lieutenant" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>RANK LEVEL (1-10)</label>
+                                        <input type="number" id="role-rank" class="cyber-input" min="1" max="10" value="1">
+                                    </div>
+                                    <div class="form-group" style="display:flex; gap:10px; align-items:center;">
+                                        <input type="checkbox" id="role-perm-create" style="width:20px; height:20px;">
+                                        <label style="margin:0;">ALLOW TASK CREATION</label>
+                                    </div>
+                                    <button type="submit" class="cyber-btn">CREATE ROLE</button>
+                                </form>
+                            </div>
+
+                             <!-- Roles List -->
+                            <div class="cyber-card">
+                                <h3 style="color:#fff; margin-bottom:1rem;">EXISTING ROLES</h3>
+                                <div id="roles-list-display">Scanning...</div>
                             </div>
                         </div>
 
-                        <label>DEADLINE</label>
-                        <input type="date" id="task-deadline" class="cyber-input">
+                        <!-- Member Assignment -->
+                        <h2 style="margin-top:2rem;">MEMBER ROSTER</h2>
+                        <div class="cyber-card">
+                            <table style="width:100%; border-collapse:collapse;">
+                                <thead>
+                                    <tr style="text-align:left; color:#888;">
+                                        <th style="padding:10px;">AGENT</th>
+                                        <th style="padding:10px;">CURRENT ROLE</th>
+                                        <th style="padding:10px;">ACTION</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="members-table-body"></tbody>
+                            </table>
+                        </div>
 
-                        <button type="submit" class="cyber-btn" style="width:100%; margin-top:1rem;">DEPLOY MISSION</button>
-                    </form>
-                </div>
-            </section>
+                        <!-- Danger Zone -->
+                        <h2 style="margin-top:3rem; color:var(--error-color);">DANGER ZONE</h2>
+                        <div class="cyber-card" style="border:1px solid var(--error-color);">
+                            <h3 style="color:var(--error-color);">TRANSFER OWNERSHIP</h3>
+                            <p style="color:#aaa; margin-bottom:1rem;">Transfer command of this organization to another agent. This action cannot be undone.</p>
+                            <div style="display:flex; gap:10px; align-items:center;">
+                                <input type="text" id="transfer-target-id" class="cyber-input" placeholder="Target Agent Name (Exact)" style="max-width:300px;">
+                                <button class="cyber-btn danger" onclick="app.initiateTransfer()">TRANSFER COMMAND</button>
+                            </div>
+                        </div>
+                    </section>
 
-            <!-- VIEW: REVIEWS -->
-            <section id="view-reviews" style="display:none">
-                <h1>PENDING SUBMISSIONS</h1>
-                <div id="reviews-list" style="display:flex; flex-direction:column; gap:1rem;">
-                    <!-- Review Cards Injected Here -->
-                    <div style="text-align:center; color:#888;">SCANNING SUBMISSIONS...</div>
-                </div>
-            </section>
-
-        </main>
+                </main>
+            </div>
+        </div>
+    </div>
+    
+    <!-- MODAL: TRANSFER STEP 2 -->
+    <div id="transfer-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:200; align-items:center; justify-content:center;">
+        <div class="cyber-card" style="width:100%; max-width:400px; border:2px solid var(--error-color);">
+            <h3 style="color:var(--error-color); text-align:center;">FINAL CONFIRMATION</h3>
+            <p style="text-align:center; margin:1rem 0;">ENTER PASSWORD TO CONFIRM TRANSFER</p>
+            <input type="password" id="transfer-password" class="cyber-input" placeholder="YOUR ACCESS CODE" style="text-align:center;">
+            <div style="display:flex; gap:10px; margin-top:1rem;">
+                <button class="cyber-btn danger" onclick="app.confirmTransfer()" style="flex:1;">CONFIRM</button>
+                <button class="cyber-btn" onclick="document.getElementById('transfer-modal').style.display='none'" style="flex:1;">ABORT</button>
+            </div>
+        </div>
     </div>
 
     <div id="notification-area" style="position:fixed; bottom:20px; right:20px;"></div>
     <script src="app.js"></script>
     <script>
-        // Init Org Dashboard
         document.addEventListener('DOMContentLoaded', () => {
-            app.initOrg();
+             // Init Org View
+             app.initOrg();
         });
     </script>
 </body>

@@ -1,7 +1,9 @@
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
 const app = {
-    user: null, // includes .user and .org info locally
+    user: null, 
+    session: null,
+    org: null,
 
     // --- UTILS ---
     showToast: (msg, type='success') => {
@@ -46,7 +48,7 @@ const app = {
 
         try {
             const res = await app.request('/auth/login', 'POST', { username: u, password: p });
-            localStorage.setItem('urquest_session', JSON.stringify(res)); // Save full auth response {status, user, org}
+            localStorage.setItem('urquest_session', JSON.stringify(res)); 
             app.showToast('ACCESS GRANTED');
             setTimeout(() => window.location.href = 'user-dashboard.html', 1000);
         } catch (e) {}
@@ -77,24 +79,43 @@ const app = {
     // --- ORG FUNCTIONS ---
     initOrg: async () => {
         const session = app.getSession();
-        if (!session || !session.org) {
-            window.location.href = 'user-dashboard.html'; // Redirect if not org owner
-            return;
-        }
         
-        document.getElementById('org-name-display').innerText = session.org.name.toUpperCase();
+        if (!session.owned_org) { 
+             if (!session.user.can_create_task) {
+                 window.location.href = 'user-dashboard.html';
+                 return;
+             }
+             app.org = session.member_org;
+        } else {
+             app.org = session.owned_org;
+        }
+
         app.user = session.user;
-        app.org = session.org;
+        document.getElementById('org-name-display').innerText = app.org.name.toUpperCase();
         
         app.loadOrgStats();
-        document.getElementById('create-task-form').addEventListener('submit', app.handleCreateTask);
+        
+        const createTaskForm = document.getElementById('create-task-form');
+        if(createTaskForm) createTaskForm.addEventListener('submit', app.handleCreateTask);
+        
+        const createRoleForm = document.getElementById('create-role-form');
+        if(createRoleForm) createRoleForm.addEventListener('submit', app.handleCreateRole);
     },
 
     switchOrgTab: (tab) => {
-        ['dashboard', 'create', 'reviews'].forEach(t => document.getElementById(`view-${t}`).style.display = 'none');
-        document.getElementById(`view-${tab}`).style.display = 'block';
+        ['dashboard', 'create', 'reviews', 'settings'].forEach(t => {
+            const el = document.getElementById(`view-${t}`);
+             if(el) el.style.display = 'none';
+        });
+        const target = document.getElementById(`view-${tab}`);
+        if(target) target.style.display = 'block';
+        
         if (tab === 'dashboard') app.loadOrgStats();
         if (tab === 'reviews') app.loadReviews();
+        if (tab === 'settings') {
+            app.loadRoles();
+            app.loadMembers();
+        }
     },
 
     loadOrgStats: async () => {
@@ -108,15 +129,14 @@ const app = {
     handleCreateTask: async (e) => {
         e.preventDefault();
         const data = {
-            creator_org_id: app.org.org_id,
+            user_id: app.user.user_id,
+            org_id: app.org.org_id,
             title: document.getElementById('task-title').value,
             description: document.getElementById('task-desc').value,
             xp_reward: parseInt(document.getElementById('task-xp').value),
             difficulty: document.getElementById('task-diff').value,
             deadline: document.getElementById('task-deadline').value || null 
         };
-        if (!data.deadline) delete data.deadline; 
-
         try {
             await app.request('/tasks/create', 'POST', data);
             app.showToast('TASK DEPLOYED SUCCESSFULLY');
@@ -172,6 +192,112 @@ const app = {
             app.loadReviews();
         } catch (e) {}
     },
+    
+    // --- ADVANCED ORG FEATURES ---
+    
+    handleCreateRole: async (e) => {
+        e.preventDefault();
+        try {
+            await app.request('/org/roles/create', 'POST', {
+                owner_user_id: app.user.user_id,
+                org_id: app.org.org_id,
+                name: document.getElementById('role-name').value,
+                rank: parseInt(document.getElementById('role-rank').value),
+                can_create_task: document.getElementById('role-perm-create').checked
+            });
+            app.showToast('ROLE DEFINTION CREATED');
+            document.getElementById('create-role-form').reset();
+            app.loadRoles();
+        } catch(e) {}
+    },
+    
+    loadRoles: async () => {
+        const el = document.getElementById('roles-list-display');
+        try {
+            const roles = await app.request(`/org/roles?org_id=${app.org.org_id}`);
+            el.innerHTML = roles.map(r => `
+                <div style="border-bottom:1px solid #333; padding:5px; display:flex; justify-content:space-between;">
+                    <span style="color:${r.can_create_task ? 'var(--primary-color)' : '#fff'}">${r.name} (Lvl ${r.rank})</span>
+                    ${r.can_create_task ? '<span style="font-size:0.7rem;">[COMMAND]</span>' : ''}
+                </div>
+            `).join('');
+        } catch(e) {}
+    },
+    
+    loadMembers: async () => {
+        const tbody = document.getElementById('members-table-body');
+        try {
+            const members = await app.request(`/org/members?org_id=${app.org.org_id}`);
+            const roles = await app.request(`/org/roles?org_id=${app.org.org_id}`);
+            
+            tbody.innerHTML = members.map(m => `
+                <tr>
+                    <td>${m.username}</td>
+                    <td>${m.role_name || 'NO RANK'}</td>
+                    <td>
+                        <select onchange="app.assignRole('${m.user_id}', this.value)" style="background:#000; color:#fff; border:1px solid #333;">
+                            <option value="">-- ASSIGN --</option>
+                            ${roles.map(r => `<option value="${r.role_id}">${r.name}</option>`).join('')}
+                        </select>
+                    </td>
+                </tr>
+            `).join('');
+        } catch(e) {}
+    },
+    
+    assignRole: async (targetId, roleId) => {
+        if(!roleId) return;
+        try {
+            await app.request('/org/roles/assign', 'POST', {
+                owner_user_id: app.user.user_id,
+                target_user_id: targetId,
+                role_id: parseInt(roleId)
+            });
+            app.showToast('RANK ASSIGNED');
+            app.loadMembers();
+        } catch(e) {}
+    },
+    
+    // --- V5 NEW: ORG PUBLIC PROFILE & LEAVE ---
+
+    viewOrgProfile: async (orgId) => {
+        try {
+            const org = await app.request(`/org/public/${orgId}`);
+            
+            // Populate Modal
+            document.getElementById('org-profile-name').innerText = org.name;
+            document.getElementById('org-profile-desc').innerText = org.description || 'No information available.';
+            document.getElementById('org-profile-count').innerText = org.member_count;
+            document.getElementById('org-profile-img').style.backgroundImage = `url('${org.image_url || 'default_faction.png'}')`;
+            
+            // Set Join Button Action
+            const btn = document.getElementById('org-profile-join-btn');
+            btn.onclick = () => { app.joinOrg(orgId); };
+            
+            // Show Modal
+            document.getElementById('org-profile-modal').style.display = 'flex';
+        } catch(e) {}
+    },
+
+    leaveOrg: async () => {
+        if(!confirm("WARNING: DISAVOWING FACTION WILL RESET YOUR RANK AND ACCESS. PROCEED?")) return;
+        
+        try {
+            await app.request('/org/leave', 'POST', {
+                user_id: app.session.user.user_id,
+                org_id: app.session.member_org.org_id
+            });
+            
+            // Update Session
+            app.session.member_org = null;
+            app.session.user.role_name = null; 
+            localStorage.setItem('urquest_session', JSON.stringify(app.session));
+            
+            app.showToast('FACTION DISAVOWED');
+            app.initUser(); // Refresh UI
+            
+        } catch(e) {}
+    },
 
     // --- USER FUNCTIONS ---
     initUser: async () => {
@@ -184,14 +310,45 @@ const app = {
         app.session = session;
         document.getElementById('username-display').innerText = session.user.username.toUpperCase();
         
-        // Update Org UI
-        if (session.org) {
+        // Update Org UI Logic
+        const memberOrg = session.member_org;
+        const ownedOrg = session.owned_org;
+
+        if (memberOrg) {
+            // User is a member of an Org
             document.getElementById('org-none-ui').style.display = 'none';
             document.getElementById('org-exists-ui').style.display = 'block';
-            document.getElementById('my-org-name').innerText = session.org.name;
+            document.getElementById('my-org-name').innerText = memberOrg.name;
+            
+            // Check if Owner OR Privileged Role
+            let userRoleStr = session.user.role_name || 'AGENT';
+            let badgeClass = 'badge';
+            
+            if (ownedOrg && ownedOrg.org_id === memberOrg.org_id) {
+                 userRoleStr = 'COMMANDER';
+                 badgeClass = 'badge Hard';
+                 document.getElementById('manage-org-btn').style.display = 'block';
+                 // Owner cannot leave from button, must transfer
+                 document.getElementById('leave-org-btn').style.display = 'none';
+            } else if (session.user.can_create_task) {
+                 userRoleStr = `${userRoleStr} [CMD]`;
+                 badgeClass = 'badge Medium';
+                 document.getElementById('manage-org-btn').style.display = 'block';
+                 document.getElementById('leave-org-btn').style.display = 'block';
+            } else {
+                 document.getElementById('manage-org-btn').style.display = 'none';
+                 document.getElementById('leave-org-btn').style.display = 'block';
+            }
+            
+            document.getElementById('org-role-badge').innerText = userRoleStr;
+            document.getElementById('org-role-badge').className = badgeClass;
+            
         } else {
+            // User has no Org
             document.getElementById('org-none-ui').style.display = 'block';
             document.getElementById('org-exists-ui').style.display = 'none';
+            // Load Joinable List
+            app.loadOrgList();
         }
 
         await app.loadUserProfile();
@@ -213,7 +370,8 @@ const app = {
             });
             
             // Update local session
-            app.session.org = { org_id: res.org_id, name: res.name };
+            app.session.owned_org = { org_id: res.org_id, name: res.name };
+            app.session.member_org = { org_id: res.org_id, name: res.name };
             localStorage.setItem('urquest_session', JSON.stringify(app.session));
             
             app.showToast('ORGANIZATION ESTABLISHED');
@@ -223,6 +381,60 @@ const app = {
             app.initUser();
             
         } catch (e) {}
+    },
+    
+    loadOrgList: async () => {
+        const listContainer = document.getElementById('join-org-list');
+        listContainer.innerHTML = 'Scanning...';
+        try {
+             const orgs = await app.request('/orgs/list');
+             listContainer.innerHTML = '';
+             if (orgs.length === 0) {
+                 listContainer.innerHTML = '<div style="font-size:0.7rem;">NO FACTIONS FOUND</div>';
+                 return;
+             }
+             
+             orgs.forEach(org => {
+                 const item = document.createElement('div');
+                 item.style.display = 'flex';
+                 item.style.justifyContent = 'space-between';
+                 item.style.alignItems = 'center';
+                 item.style.padding = '5px';
+                 item.style.borderBottom = '1px solid #333';
+                 item.style.cursor = 'pointer'; 
+                 // Clicking item shows profile
+                 item.onclick = (e) => { 
+                    if(e.target.tagName !== 'BUTTON') app.viewOrgProfile(org.org_id); 
+                 };
+                 
+                 item.innerHTML = `
+                    <span style="color:#fff; font-size:0.8rem; text-decoration:underline;">${org.name}</span>
+                    <button class="cyber-btn" style="padding:2px 5px; font-size:0.6rem;" onclick="event.stopPropagation(); app.viewOrgProfile(${org.org_id})">VIEW</button>
+                 `;
+                 listContainer.appendChild(item);
+             });
+        } catch (e) {}
+    },
+
+    joinOrg: async (orgId) => {
+        try {
+            const res = await app.request('/org/join', 'POST', {
+                user_id: app.session.user.user_id,
+                org_id: orgId
+            });
+            
+            // Update local session
+            app.session.member_org = { org_id: orgId, name: res.org_name };
+            localStorage.setItem('urquest_session', JSON.stringify(app.session));
+            
+            app.showToast(`JOINED ${res.org_name}`);
+            
+            // Close modal if open
+            document.getElementById('org-profile-modal').style.display = 'none';
+            
+            app.initUser(); // Refresh UI
+            
+        } catch(e) {}
     },
 
     loadUserProfile: async () => {
@@ -323,5 +535,34 @@ const app = {
                 tbody.innerHTML += row;
             });
         } catch (e) {}
+    },
+    
+    initiateTransfer: () => {
+        const target = document.getElementById('transfer-target-id').value;
+        if(!target) return app.showToast('TARGET AGENT ID REQUIRED', 'error');
+        
+        app.transferTargetId = target.toLowerCase().replace(' ', '_'); 
+        
+        document.getElementById('transfer-modal').style.display = 'flex';
+    },
+    
+    confirmTransfer: async () => {
+        const pw = document.getElementById('transfer-password').value;
+        if(!pw) return app.showToast('PASSWORD REQUIRED', 'error');
+        
+        try {
+            await app.request('/org/transfer-ownership', 'POST', {
+                current_owner_id: app.user.user_id,
+                password: pw,
+                new_owner_id: app.transferTargetId,
+                org_id: app.org.org_id
+            });
+            
+            app.showToast('COMMAND TRANSFERRED. LOGGING OUT...', 'success');
+            setTimeout(() => {
+                app.logout();
+            }, 2000);
+            
+        } catch(e) {}
     }
 };

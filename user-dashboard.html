@@ -46,16 +46,26 @@
                     <div style="margin-top:2rem; border-top:1px solid #333; padding-top:1rem;">
                         <div style="color:#888; font-size:0.7rem; margin-bottom:10px;">ORGANIZATION AFFILIATION</div>
                         
-                        <!-- CASE 1: No Org -->
+                        <!-- CASE 1: No Org (List Joinable Orgs) -->
                         <div id="org-none-ui">
-                            <button class="cyber-btn secondary" onclick="app.showCreateOrgModal()" style="width:100%; font-size:0.8rem;">CREATE ORGANIZATION</button>
-                            <div style="text-align:center; font-size:0.7rem; color:#666; margin-top:5px;">OR JOIN ONE [Locked]</div>
+                            <button class="cyber-btn secondary" onclick="app.showCreateOrgModal()" style="width:100%; font-size:0.8rem; margin-bottom:1rem;">CREATE ORGANIZATION</button>
+                            <div style="color:#fff; font-size:0.8rem; margin-bottom:0.5rem;">OR SCAN FACTIONS:</div>
+                            <div id="join-org-list" style="display:flex; flex-direction:column; gap:5px; max-height:200px; overflow-y:auto;">
+                                <!-- Org List Items -->
+                                <div style="font-size:0.7rem; color:#666;">SCANNING...</div>
+                            </div>
                         </div>
 
-                        <!-- CASE 2: Has Org -->
+                        <!-- CASE 2: Has Org (Member or Owner) -->
                         <div id="org-exists-ui" style="display:none; text-align:center;">
                             <div id="my-org-name" style="color:var(--secondary-color); font-weight:bold; margin-bottom:10px;">ORG NAME</div>
-                            <button class="cyber-btn" onclick="window.location.href='org-dashboard.html'" style="width:100%; font-size:0.8rem;">MANAGE ORG</button>
+                            <div id="org-role-badge" class="badge" style="margin-bottom:1rem; display:inline-block;">MEMBER</div>
+                            
+                            <!-- ACTIONS -->
+                            <button id="manage-org-btn" class="cyber-btn" onclick="window.location.href='org-dashboard.html'" style="width:100%; font-size:0.8rem; display:none; margin-bottom:10px;">MANAGE ORG</button>
+                            
+                            <!-- Leave Button (Small & Red) -->
+                             <button id="leave-org-btn" class="cyber-btn danger" onclick="app.leaveOrg()" style="width:100%; font-size:0.7rem; padding:5px;">DISAVOW FACTION</button>
                         </div>
                     </div>
                 </aside>
@@ -117,6 +127,26 @@
             <div style="display:flex; gap:10px; margin-top:1rem;">
                 <button class="cyber-btn secondary" onclick="app.createOrg()" style="flex:1;">ESTABLISH</button>
                 <button class="cyber-btn danger" onclick="document.getElementById('create-org-modal').style.display='none'" style="flex:1;">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ORG PUBLIC PROFILE -->
+    <div id="org-profile-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:150; align-items:center; justify-content:center; backdrop-filter:blur(8px);">
+        <div class="cyber-card" style="width:100%; max-width:600px; background:#0a0a0e; border:1px solid var(--secondary-color);">
+            <div id="org-profile-content" style="text-align:center;">
+                <div id="org-profile-img" style="width:100px; height:100px; background:#333; margin:0 auto 1rem; border-radius:50%; border:2px solid var(--secondary-color); background-size:cover; background-position:center;"></div>
+                <h2 id="org-profile-name" style="color:var(--secondary-color); margin-bottom:0.5rem;">ORG NAME</h2>
+                <div style="color:#888; font-size:0.8rem; margin-bottom:1.5rem;">MEMBERS: <span id="org-profile-count">0</span></div>
+                
+                <p id="org-profile-desc" style="color:#ddd; margin-bottom:2rem; line-height:1.6; text-align:left; background:#111; padding:15px; border-radius:5px;">
+                    Loading intel...
+                </p>
+                
+                <div style="display:flex; gap:10px; margin-top:1rem;">
+                    <button id="org-profile-join-btn" class="cyber-btn" style="flex:1;">INITIATE ALLIANCE (JOIN)</button>
+                    <button class="cyber-btn danger" onclick="document.getElementById('org-profile-modal').style.display='none'" style="flex:1;">CLOSE</button>
+                </div>
             </div>
         </div>
     </div>
