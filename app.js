@@ -96,10 +96,13 @@ const app = {
         app.loadOrgStats();
         
         const createTaskForm = document.getElementById('create-task-form');
-        if(createTaskForm) createTaskForm.addEventListener('submit', app.handleCreateTask);
+        if(createTaskForm) createTaskForm.addEventListener('submit', app.handleCreateOrgTask);
         
         const createRoleForm = document.getElementById('create-role-form');
         if(createRoleForm) createRoleForm.addEventListener('submit', app.handleCreateRole);
+
+        const editOrgForm = document.getElementById('edit-org-form');
+        if(editOrgForm) editOrgForm.addEventListener('submit', app.handleEditOrg);
     },
 
     switchOrgTab: (tab) => {
@@ -111,10 +114,12 @@ const app = {
         if(target) target.style.display = 'block';
         
         if (tab === 'dashboard') app.loadOrgStats();
+        if (tab === 'create') app.loadOrgMembersForAssignAndCreate();
         if (tab === 'reviews') app.loadReviews();
         if (tab === 'settings') {
             app.loadRoles();
             app.loadMembers();
+            app.populateOrgEditForm();
         }
     },
 
@@ -126,8 +131,33 @@ const app = {
         } catch (e) {}
     },
 
-    handleCreateTask: async (e) => {
+    loadOrgMembersForAssignAndCreate: async () => {
+        // Load members into the multi-select box
+        const select = document.getElementById('task-assignees');
+        if(!select) return;
+        try {
+            const members = await app.request(`/org/members?org_id=${app.org.org_id}`);
+            select.innerHTML = '';
+            members.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.user_id;
+                opt.innerText = `${m.username} (${m.role_name || 'Member'})`;
+                select.appendChild(opt);
+            });
+        } catch(e) {}
+    },
+
+    handleCreateOrgTask: async (e) => {
         e.preventDefault();
+        
+        const visibility = document.querySelector('input[name="visibility"]:checked').value;
+        let assigneeIds = [];
+        
+        if(visibility === 'PRIVATE') {
+             const select = document.getElementById('task-assignees');
+             assigneeIds = Array.from(select.selectedOptions).map(opt => opt.value);
+        }
+
         const data = {
             user_id: app.user.user_id,
             org_id: app.org.org_id,
@@ -135,7 +165,9 @@ const app = {
             description: document.getElementById('task-desc').value,
             xp_reward: parseInt(document.getElementById('task-xp').value),
             difficulty: document.getElementById('task-diff').value,
-            deadline: document.getElementById('task-deadline').value || null 
+            deadline: document.getElementById('task-deadline').value || null,
+            visibility: visibility,
+            assignee_ids: assigneeIds
         };
         try {
             await app.request('/tasks/create', 'POST', data);
@@ -258,44 +290,53 @@ const app = {
         } catch(e) {}
     },
     
-    // --- V5 NEW: ORG PUBLIC PROFILE & LEAVE ---
-
-    viewOrgProfile: async (orgId) => {
+    populateOrgEditForm: () => {
+        document.getElementById('edit-org-name').value = app.org.name;
+        document.getElementById('edit-org-desc').value = app.org.description || '';
+        document.getElementById('edit-org-img').value = app.org.image_url || '';
+    },
+    
+    handleEditOrg: async (e) => {
+        e.preventDefault();
         try {
-            const org = await app.request(`/org/public/${orgId}`);
-            
-            // Populate Modal
-            document.getElementById('org-profile-name').innerText = org.name;
-            document.getElementById('org-profile-desc').innerText = org.description || 'No information available.';
-            document.getElementById('org-profile-count').innerText = org.member_count;
-            document.getElementById('org-profile-img').style.backgroundImage = `url('${org.image_url || 'default_faction.png'}')`;
-            
-            // Set Join Button Action
-            const btn = document.getElementById('org-profile-join-btn');
-            btn.onclick = () => { app.joinOrg(orgId); };
-            
-            // Show Modal
-            document.getElementById('org-profile-modal').style.display = 'flex';
+            await app.request('/org/update', 'POST', {
+                org_id: app.org.org_id,
+                user_id: app.user.user_id,
+                name: document.getElementById('edit-org-name').value,
+                description: document.getElementById('edit-org-desc').value,
+                image_url: document.getElementById('edit-org-img').value
+            });
+            app.showToast('IDENTITY UPDATED');
+            // Update local session info
+            app.org.name = document.getElementById('edit-org-name').value;
+            app.org.description = document.getElementById('edit-org-desc').value;
+            app.org.image_url = document.getElementById('edit-org-img').value;
+             if (app.session.owned_org) app.session.owned_org = app.org;
+             // We won't update member_org deeply here but it's fine for now
+            localStorage.setItem('urquest_session', JSON.stringify(app.session));
+            document.getElementById('org-name-display').innerText = app.org.name.toUpperCase();
         } catch(e) {}
     },
-
-    leaveOrg: async () => {
-        if(!confirm("WARNING: DISAVOWING FACTION WILL RESET YOUR RANK AND ACCESS. PROCEED?")) return;
-        
+    
+    initiateTransfer: () => {
+        const target = document.getElementById('transfer-target-id').value;
+        if(!target) return app.showToast('TARGET AGENT ID REQUIRED', 'error');
+        app.transferTargetId = target.toLowerCase().replace(' ', '_'); 
+        document.getElementById('transfer-modal').style.display = 'flex';
+    },
+    
+    confirmTransfer: async () => {
+        const pw = document.getElementById('transfer-password').value;
+        if(!pw) return app.showToast('PASSWORD REQUIRED', 'error');
         try {
-            await app.request('/org/leave', 'POST', {
-                user_id: app.session.user.user_id,
-                org_id: app.session.member_org.org_id
+            await app.request('/org/transfer-ownership', 'POST', {
+                current_owner_id: app.user.user_id,
+                password: pw,
+                new_owner_id: app.transferTargetId,
+                org_id: app.org.org_id
             });
-            
-            // Update Session
-            app.session.member_org = null;
-            app.session.user.role_name = null; 
-            localStorage.setItem('urquest_session', JSON.stringify(app.session));
-            
-            app.showToast('FACTION DISAVOWED');
-            app.initUser(); // Refresh UI
-            
+            app.showToast('COMMAND TRANSFERRED. LOGGING OUT...', 'success');
+            setTimeout(() => { app.logout(); }, 2000);
         } catch(e) {}
     },
 
@@ -310,17 +351,24 @@ const app = {
         app.session = session;
         document.getElementById('username-display').innerText = session.user.username.toUpperCase();
         
+        // Populate Public Task Form Listener
+        const ptForm = document.getElementById('create-public-task-form');
+         if(ptForm) {
+            // Remove old listener to prevent duplicates if re-init
+            const newForm = ptForm.cloneNode(true);
+            ptForm.parentNode.replaceChild(newForm, ptForm);
+            newForm.addEventListener('submit', app.handleCreatePublicTask);
+        }
+        
         // Update Org UI Logic
         const memberOrg = session.member_org;
         const ownedOrg = session.owned_org;
 
         if (memberOrg) {
-            // User is a member of an Org
             document.getElementById('org-none-ui').style.display = 'none';
             document.getElementById('org-exists-ui').style.display = 'block';
             document.getElementById('my-org-name').innerText = memberOrg.name;
             
-            // Check if Owner OR Privileged Role
             let userRoleStr = session.user.role_name || 'AGENT';
             let badgeClass = 'badge';
             
@@ -328,7 +376,6 @@ const app = {
                  userRoleStr = 'COMMANDER';
                  badgeClass = 'badge Hard';
                  document.getElementById('manage-org-btn').style.display = 'block';
-                 // Owner cannot leave from button, must transfer
                  document.getElementById('leave-org-btn').style.display = 'none';
             } else if (session.user.can_create_task) {
                  userRoleStr = `${userRoleStr} [CMD]`;
@@ -344,10 +391,8 @@ const app = {
             document.getElementById('org-role-badge').className = badgeClass;
             
         } else {
-            // User has no Org
             document.getElementById('org-none-ui').style.display = 'block';
             document.getElementById('org-exists-ui').style.display = 'none';
-            // Load Joinable List
             app.loadOrgList();
         }
 
@@ -368,18 +413,12 @@ const app = {
                 owner_user_id: app.session.user.user_id,
                 name: name
             });
-            
-            // Update local session
             app.session.owned_org = { org_id: res.org_id, name: res.name };
             app.session.member_org = { org_id: res.org_id, name: res.name };
             localStorage.setItem('urquest_session', JSON.stringify(app.session));
-            
             app.showToast('ORGANIZATION ESTABLISHED');
             document.getElementById('create-org-modal').style.display = 'none';
-            
-            // Refresh UI
             app.initUser();
-            
         } catch (e) {}
     },
     
@@ -393,7 +432,6 @@ const app = {
                  listContainer.innerHTML = '<div style="font-size:0.7rem;">NO FACTIONS FOUND</div>';
                  return;
              }
-             
              orgs.forEach(org => {
                  const item = document.createElement('div');
                  item.style.display = 'flex';
@@ -402,11 +440,9 @@ const app = {
                  item.style.padding = '5px';
                  item.style.borderBottom = '1px solid #333';
                  item.style.cursor = 'pointer'; 
-                 // Clicking item shows profile
                  item.onclick = (e) => { 
                     if(e.target.tagName !== 'BUTTON') app.viewOrgProfile(org.org_id); 
                  };
-                 
                  item.innerHTML = `
                     <span style="color:#fff; font-size:0.8rem; text-decoration:underline;">${org.name}</span>
                     <button class="cyber-btn" style="padding:2px 5px; font-size:0.6rem;" onclick="event.stopPropagation(); app.viewOrgProfile(${org.org_id})">VIEW</button>
@@ -415,6 +451,19 @@ const app = {
              });
         } catch (e) {}
     },
+    
+    viewOrgProfile: async (orgId) => {
+        try {
+            const org = await app.request(`/org/public/${orgId}`);
+            document.getElementById('org-profile-name').innerText = org.name;
+            document.getElementById('org-profile-desc').innerText = org.description || 'No information available.';
+            document.getElementById('org-profile-count').innerText = org.member_count;
+            document.getElementById('org-profile-img').style.backgroundImage = `url('${org.image_url || 'default_faction.png'}')`;
+            const btn = document.getElementById('org-profile-join-btn');
+            btn.onclick = () => { app.joinOrg(orgId); };
+            document.getElementById('org-profile-modal').style.display = 'flex';
+        } catch(e) {}
+    },
 
     joinOrg: async (orgId) => {
         try {
@@ -422,18 +471,27 @@ const app = {
                 user_id: app.session.user.user_id,
                 org_id: orgId
             });
-            
-            // Update local session
             app.session.member_org = { org_id: orgId, name: res.org_name };
             localStorage.setItem('urquest_session', JSON.stringify(app.session));
-            
             app.showToast(`JOINED ${res.org_name}`);
-            
-            // Close modal if open
             document.getElementById('org-profile-modal').style.display = 'none';
-            
-            app.initUser(); // Refresh UI
-            
+            app.initUser(); 
+        } catch(e) {}
+    },
+
+    leaveOrg: async () => {
+        if(!confirm("WARNING: DISAVOWING FACTION WILL RESET YOUR RANK AND ACCESS. PROCEED?")) return;
+        try {
+            await app.request('/org/leave', 'POST', {
+                user_id: app.session.user.user_id,
+                org_id: app.session.member_org.org_id
+            });
+            app.session.member_org = null;
+            app.session.user.role_name = null;
+            app.session.user.can_create_task = false; 
+            localStorage.setItem('urquest_session', JSON.stringify(app.session));
+            app.showToast('FACTION DISAVOWED');
+            app.initUser(); 
         } catch(e) {}
     },
 
@@ -468,28 +526,74 @@ const app = {
         if (tab === 'leaderboard') app.loadLeaderboard();
         if (tab === 'profile') app.loadUserProfile();
     },
+    
+    openCreatePublicTaskModal: () => {
+        document.getElementById('create-public-task-modal').style.display = 'flex';
+    },
+    
+    handleCreatePublicTask: async (e) => {
+        e.preventDefault();
+        const data = {
+            user_id: app.session.user.user_id,
+            org_id: null,
+            title: document.getElementById('ptask-title').value,
+            description: document.getElementById('ptask-desc').value,
+            xp_reward: parseInt(document.getElementById('ptask-xp').value),
+            difficulty: document.getElementById('ptask-diff').value,
+            deadline: null,
+            visibility: 'PUBLIC',
+            assignee_ids: []
+        };
+        try {
+            await app.request('/tasks/create', 'POST', data);
+            app.showToast('PUBLIC OPERATION DEPLOYED');
+            document.getElementById('create-public-task-modal').style.display = 'none';
+            document.getElementById('create-public-task-form').reset();
+            app.loadAvailableTasks();
+        } catch(e) {}
+    },
 
     loadAvailableTasks: async () => {
         const grid = document.getElementById('quest-grid');
         grid.innerHTML = 'LOADING...';
         try {
-            const tasks = await app.request('/tasks/available');
+            const tasks = await app.request(`/tasks/available?user_id=${app.session.user.user_id}`);
             grid.innerHTML = '';
             if (tasks.length === 0) {
                 grid.innerHTML = 'NO MISSIONS DETECTED.';
                 return;
             }
             tasks.forEach(task => {
+                // Determine Badge Logic
+                let badge = '';
+                let badgeClass = 'badge';
+                
+                if (task.visibility === 'PRIVATE') {
+                    badge = 'CONFIDENTIAL';
+                    badgeClass = 'badge Hard'; // Red
+                } else if (task.org_name) {
+                    badge = 'FACTION OP';
+                    badgeClass = 'badge Medium'; // Orange
+                } else {
+                    badge = 'PUBLIC BOUNTY';
+                    badgeClass = 'badge Easy'; // Green
+                }
+
                 const card = document.createElement('div');
                 card.className = 'cyber-card';
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between;">
-                        <span class="badge ${task.difficulty}">${task.difficulty}</span>
+                        <span class="${badgeClass}">${badge}</span>
                         <span style="color:var(--primary-color)">${task.xp_reward} XP</span>
                     </div>
-                    <div style="font-size:0.7rem; color:#888; margin-top:5px;">${task.org_name}</div>
+                    <div style="font-size:0.7rem; color:#888; margin-top:5px;">
+                        ${task.org_name ? task.org_name.toUpperCase() : 'FREELANCE'} // ${task.creator_name || 'UNKNOWN'}
+                    </div>
                     <h3 style="margin:5px 0; color:#fff;">${task.title}</h3>
                     <p style="color:#aaa; font-size:0.9rem; margin-bottom:1rem;">${task.description}</p>
+                    
+                    ${task.visibility === 'PRIVATE' ? '<div style="font-size:0.6rem; color:var(--error-color); margin-bottom:10px;">[CLASSIFIED ACCESS ONLY]</div>' : ''}
+                    
                     <button class="cyber-btn" style="width:100%" onclick="app.openSubmitModal(${task.task_id})">ACCEPT & SUBMIT</button>
                 `;
                 grid.appendChild(card);
@@ -535,34 +639,5 @@ const app = {
                 tbody.innerHTML += row;
             });
         } catch (e) {}
-    },
-    
-    initiateTransfer: () => {
-        const target = document.getElementById('transfer-target-id').value;
-        if(!target) return app.showToast('TARGET AGENT ID REQUIRED', 'error');
-        
-        app.transferTargetId = target.toLowerCase().replace(' ', '_'); 
-        
-        document.getElementById('transfer-modal').style.display = 'flex';
-    },
-    
-    confirmTransfer: async () => {
-        const pw = document.getElementById('transfer-password').value;
-        if(!pw) return app.showToast('PASSWORD REQUIRED', 'error');
-        
-        try {
-            await app.request('/org/transfer-ownership', 'POST', {
-                current_owner_id: app.user.user_id,
-                password: pw,
-                new_owner_id: app.transferTargetId,
-                org_id: app.org.org_id
-            });
-            
-            app.showToast('COMMAND TRANSFERRED. LOGGING OUT...', 'success');
-            setTimeout(() => {
-                app.logout();
-            }, 2000);
-            
-        } catch(e) {}
     }
 };

@@ -38,6 +38,9 @@
                     </div>
                     <nav>
                         <a class="nav-link active" onclick="app.switchUserTab('quests')">QUEST BOARD</a>
+                        <!-- New Create Public Task Button (Available to all) -->
+                        <a class="nav-link" onclick="app.openCreatePublicTaskModal()" style="color:var(--accent-color);">+ DEPLOY PUBLIC OP</a>
+                        
                         <a class="nav-link" onclick="app.switchUserTab('leaderboard')">LEADERBOARD</a>
                         <a class="nav-link" onclick="app.switchUserTab('profile')">HISTORY</a>
                     </nav>
@@ -115,6 +118,30 @@
                 <button class="cyber-btn" onclick="app.submitProof()" style="flex:1;">UPLOAD</button>
                 <button class="cyber-btn danger" onclick="document.getElementById('submission-modal').style.display='none'" style="flex:1;">CANCEL</button>
             </div>
+        </div>
+    </div>
+    
+    <!-- MODAL: CREATE PUBLIC TASK -->
+    <div id="create-public-task-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100; align-items:center; justify-content:center; backdrop-filter:blur(5px);">
+        <div class="cyber-card" style="width:100%; max-width:500px; background:#000;">
+            <h3 style="color:var(--accent-color);">DEPLOY PUBLIC OPERATION</h3>
+            <p style="color:#888; margin-bottom:1rem;">Create a mission available to ALL agents.</p>
+            <form id="create-public-task-form">
+                <input type="text" id="ptask-title" class="cyber-input" placeholder="MISSION TITLE" required style="margin-bottom:10px;">
+                <textarea id="ptask-desc" class="cyber-input" placeholder="BRIEFING" required rows="3" style="margin-bottom:10px;"></textarea>
+                <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <input type="number" id="ptask-xp" class="cyber-input" placeholder="XP" required value="50">
+                    <select id="ptask-diff" class="cyber-input">
+                        <option value="Easy">Easy</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Hard">Hard</option>
+                    </select>
+                </div>
+                <div style="display:flex; gap:10px; margin-top:1rem;">
+                    <button type="submit" class="cyber-btn secondary" style="flex:1;">DEPLOY</button>
+                    <button type="button" class="cyber-btn danger" onclick="document.getElementById('create-public-task-modal').style.display='none'" style="flex:1;">CANCEL</button>
+                </div>
+            </form>
         </div>
     </div>
 

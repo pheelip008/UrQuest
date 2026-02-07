@@ -82,6 +82,24 @@
                                     </div>
                                 </div>
                                 <div class="form-group">
+                                    <label>VISIBILITY PROTOCOL</label>
+                                    <div style="display:flex; gap:20px; margin-top:5px;">
+                                        <label style="color:#fff; cursor:pointer;"><input type="radio" name="visibility" value="PUBLIC" checked onclick="document.getElementById('assign-section').style.display='none'"> PUBLIC (ALL AGENTS)</label>
+                                        <label style="color:#fff; cursor:pointer;"><input type="radio" name="visibility" value="PRIVATE" onclick="document.getElementById('assign-section').style.display='block'"> PRIVATE (INTERNAL ONLY)</label>
+                                    </div>
+                                </div>
+
+                                <!-- Assign Section -->
+                                <div id="assign-section" style="display:none; margin-bottom:1rem; border:1px solid #333; padding:10px;">
+                                    <label style="color:var(--accent-color);">ASSIGNMENTS (OPTIONAL)</label>
+                                    <div style="font-size:0.7rem; color:#888; margin-bottom:5px;">Leave empty to assign to ALL members. Select specific agents to restrict access.</div>
+                                    <select id="task-assignees" class="cyber-input" multiple style="height:100px;">
+                                        <!-- Populated via JS -->
+                                    </select>
+                                    <div style="font-size:0.6rem; color:#666; margin-top:2px;">Hold CTRL to select multiple</div>
+                                </div>
+
+                                <div class="form-group">
                                     <label>DEADLINE (OPTIONAL)</label>
                                     <input type="date" id="task-deadline" class="cyber-input">
                                 </div>
@@ -96,9 +114,29 @@
                         <div id="reviews-list" style="display:grid; grid-template-columns: 1fr; gap:1rem; margin-top:1rem;"></div>
                     </section>
 
-                    <!-- TAB: SETTINGS (ROLES + TRANSFER) -->
+                    <!-- TAB: SETTINGS (ROLES + TRANSFER + EDIT INFO) -->
                     <section id="view-settings" style="display:none">
                         
+                        <!-- NEW: Edit Logic -->
+                         <div class="cyber-card" style="margin-bottom:2rem; border:1px solid var(--secondary-color);">
+                            <h3 style="color:var(--secondary-color); margin-bottom:1rem;">FACTION IDENTITY</h3>
+                            <form id="edit-org-form">
+                                <div class="form-group">
+                                    <label>FACTION NAME</label>
+                                    <input type="text" id="edit-org-name" class="cyber-input">
+                                </div>
+                                <div class="form-group">
+                                    <label>PUBLIC MANIFESTO (DESCRIPTION)</label>
+                                    <textarea id="edit-org-desc" class="cyber-input" rows="3"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>LOGO IMAGE URL</label>
+                                    <input type="text" id="edit-org-img" class="cyber-input">
+                                </div>
+                                <button type="submit" class="cyber-btn secondary">UPDATE IDENTITY</button>
+                            </form>
+                        </div>
+
                         <!-- Role Creation -->
                         <h2>ROLE MANAGEMENT</h2>
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:2rem;">
