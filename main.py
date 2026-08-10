@@ -24,6 +24,8 @@ JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 GOOGLE_CALLBACK_URL = os.getenv("GOOGLE_CALLBACK_URL")
+CLIENT_ORIGIN = os.getenv("CLIENT_ORIGIN", "http://127.0.0.1:5500")
+IS_PRODUCTION = os.getenv("NODE_ENV") == "production" or os.getenv("RENDER") is not None
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -41,7 +43,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5500", "http://127.0.0.1:5500"],
+    allow_origins=[CLIENT_ORIGIN, "http://localhost:5500", "http://127.0.0.1:5500"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -70,11 +72,13 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
 # --- Schemas ---
 class UserRegister(BaseModel):
     username: str
+    email: str
     password: str
 
 class UserLogin(BaseModel):
-    username: str
+    email: str
     password: str
+    rememberMe: bool = False
 
 class OrgCreate(BaseModel):
     owner_user_id: str
@@ -145,8 +149,8 @@ def create_token_cookie(response: Response, user_id: str):
         key="token",
         value=token,
         httponly=True,
-        samesite="lax",
-        secure=False,
+        samesite="none" if IS_PRODUCTION else "lax",
+        secure=IS_PRODUCTION,
         max_age=7 * 24 * 60 * 60
     )
 
@@ -210,34 +214,32 @@ async def google_callback(code: str, response: Response, db: Session = Depends(g
         # 4. Set Cookie and redirect
         create_token_cookie(response, user.user_id)
         
-        # Determine redirect based on client origin in a real app, hardcoded for now
         from fastapi.responses import RedirectResponse
-        res = RedirectResponse("http://localhost:5500/user-dashboard.html")
+        res = RedirectResponse(f"{CLIENT_ORIGIN}/user-dashboard.html")
         create_token_cookie(res, user.user_id)
         return res
 
 @app.post("/api/auth/register", tags=["Auth"])
 def register(user: UserRegister, db: Session = Depends(get_db)):
-    existing = db.query(models.User).filter(models.User.username == user.username).first()
+    existing = db.query(models.User).filter(
+        or_(models.User.username == user.username, models.User.email == user.email)
+    ).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Username taken")
-    
-    pattern = r"^[a-zA-Z0-9_.-]+@gmail\.com$"
-    if not re.match(pattern, user.email):
-        raise HTTPException(status_code=400, detail="Invalid Email Address. Only Gmail is allowed.")
+        raise HTTPException(status_code=400, detail="Username or email taken")
 
     new_user = models.User(
         username=user.username,
+        email=user.email,
         password=get_password_hash(user.password)
     )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    return {"status": "success", "user_id": new_user.user_id}
+    return {"success": True, "user_id": new_user.user_id}
 
 @app.post("/api/auth/login", tags=["Auth"])
 def login(user: UserLogin, response: Response, db: Session = Depends(get_db)):
-    u = db.query(models.User).filter(models.User.username == user.username).first()
+    u = db.query(models.User).filter(models.User.email == user.email).first()
     if not u or not u.password or not verify_password(user.password, u.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
@@ -247,7 +249,7 @@ def login(user: UserLogin, response: Response, db: Session = Depends(get_db)):
     member_org = u.member_org
 
     return {
-        "status": "success",
+        "success": True,
         "user": {
             "user_id": u.user_id,
             "username": u.username,
@@ -265,6 +267,7 @@ def get_me(user: models.User = Depends(get_current_user), db: Session = Depends(
     owned_org = db.query(models.Organization).filter(models.Organization.owner_user_id == user.user_id).first()
     member_org = user.member_org
     return {
+        "success": True,
         "user": {
             "user_id": user.user_id,
             "username": user.username,
@@ -279,7 +282,11 @@ def get_me(user: models.User = Depends(get_current_user), db: Session = Depends(
 
 @app.post("/api/auth/logout", tags=["Auth"])
 def logout(response: Response):
-    response.delete_cookie("token")
+    response.delete_cookie(
+        "token",
+        samesite="none" if IS_PRODUCTION else "lax",
+        secure=IS_PRODUCTION
+    )
     return {"status": "success"}
 
 @app.get("/api/orgs/list", tags=["Org"])
@@ -379,6 +386,7 @@ def create_task(task: TaskCreate, db: Session = Depends(get_db), current_user: m
     db.commit()
     return {"status": "success"}
 
+@app.get("/api/tasks/available", tags=["Tasks"])
 @app.get("/api/tasks", tags=["Tasks"])
 def avail_tasks(db: Session = Depends(get_db), request: Request = None):
     # Try to get current user optionally
