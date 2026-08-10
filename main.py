@@ -81,44 +81,36 @@ class UserLogin(BaseModel):
     rememberMe: bool = False
 
 class OrgCreate(BaseModel):
-    owner_user_id: str
     name: str
 
 class OrgJoin(BaseModel):
-    user_id: str
     org_id: int
 
 class OrgUpdate(BaseModel):
     org_id: int
-    user_id: str
     description: Optional[str] = None
     image_url: Optional[str] = None
     name: Optional[str] = None
 
 class OrgLeave(BaseModel):
-    user_id: str
     org_id: int
 
 class RoleCreate(BaseModel):
-    owner_user_id: str
     org_id: int
     name: str
     rank: int
     can_create_task: bool
 
 class RoleAssign(BaseModel):
-    owner_user_id: str
     target_user_id: str
     role_id: int
 
 class TransferOwnership(BaseModel):
-    current_owner_id: str
     password: str
     new_owner_id: str
     org_id: int
 
 class TaskCreate(BaseModel):
-    user_id: str
     org_id: Optional[int] = None
     title: str
     description: str
@@ -130,7 +122,6 @@ class TaskCreate(BaseModel):
 
 class SubmissionCreate(BaseModel):
     task_id: int
-    user_id: str
     proof_link: str
 
 class ReviewAction(BaseModel):
