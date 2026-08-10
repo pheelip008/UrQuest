@@ -1,5 +1,12 @@
 const authService = require("./auth.service");
 
+// Must match the options in server.js for cross-domain cookies
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+};
+
 async function register(req, res) {
   const { username, email, password } = req.body;
   const result = await authService.registerUser({ username, email, password });
@@ -16,12 +23,10 @@ async function login(req, res) {
     return res.status(401).json(result);
   }
 
-  // Set JWT as httpOnly cookie (same as Hangout)
+  // Set JWT as httpOnly cookie
   res.cookie('token', result.token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000 // 30 days vs 1 day
+    ...COOKIE_OPTIONS,
+    maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000
   });
 
   // Don't send token in response body (it's in the cookie)
@@ -38,8 +43,9 @@ async function me(req, res) {
 }
 
 async function logout(req, res) {
-  res.clearCookie('token');
+  res.clearCookie('token', COOKIE_OPTIONS);
   res.json({ success: true, message: "Logged out successfully" });
 }
 
 module.exports = { register, login, me, logout };
+

@@ -23,7 +23,13 @@ app.use(cors({
   credentials: true
 }));
 
-// --- Google OAuth Routes (same pattern as Hangout) ---
+// Shared cookie options for cross-domain (Vercel frontend <-> Render API)
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+};
+
 app.get('/auth/google', passport.authenticate('google', {
   scope: ['profile', 'email']
 }));
@@ -34,18 +40,17 @@ app.get('/auth/google/callback',
     const token = jwt.sign(
       { userId: req.user.id },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN }
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
 
     res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      ...COOKIE_OPTIONS,
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
     res.redirect(`${CLIENT_ORIGIN}/user-dashboard.html`);
   }
+
 );
 
 // --- API Routes ---
