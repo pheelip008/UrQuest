@@ -1,184 +1,310 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="dark" lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UrQuest - Agent Interface</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <title>User Dashboard // Agent Protocol</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="dashboard-container">
-        
-        <div style="width:100%; display:flex; flex-direction:column; height:100vh;">
-            <header style="background:rgba(0,0,0,0.8); border-bottom:1px solid #333; padding:1rem 2rem; display:flex; justify-content:space-between; align-items:center;">
-                <div style="font-family:var(--font-header); font-size:1.5rem; color:var(--primary-color);">
-                    URQUEST <span style="font-size:0.8rem; color:#fff;">// AGENT PROTOCOL</span>
-                </div>
-                
-                <div style="display:flex; gap:2rem; align-items:center;">
-                    <div style="text-align:right;">
-                        <div style="color:#888; font-size:0.7rem;">CURRENT LEVEL</div>
-                        <div style="font-size:1.5rem; font-family:var(--font-header); color:var(--secondary-color);" id="user-level">LVL -</div>
-                    </div>
-                    <div style="text-align:right;">
-                        <div style="color:#888; font-size:0.7rem;">XP BALANCE</div>
-                        <div style="font-size:1.5rem; font-family:var(--font-header); color:var(--primary-color);" id="user-xp">0 XP</div>
-                    </div>
-                    <button class="cyber-btn danger" onclick="app.logout()" style="padding:0.5rem 1rem;">LOGOUT</button>
-                </div>
-            </header>
+    <!-- Background Effects -->
+    <div class="bg-grid-pattern"></div>
+    <div class="scanline"></div>
 
-            <div style="flex:1; display:flex; overflow:hidden;">
-                <!-- SIDEBAR -->
-                <aside style="width:250px; background:#0a0a0e; border-right:1px solid #333; padding:2rem 1rem;">
-                    <div style="margin-bottom:2rem; text-align:center;">
-                        <div id="user-rank-display" style="border:1px solid var(--primary-color); padding:0.5rem; border-radius:50%; width:60px; height:60px; display:flex; align-items:center; justify-content:center; margin:0 auto 10px; font-size:1.2rem;">#?</div>
-                        <div id="username-display" style="color:#fff;">AGENT</div>
-                    </div>
-                    <nav>
-                        <a class="nav-link active" onclick="app.switchUserTab('quests')">QUEST BOARD</a>
-                        <!-- New Create Public Task Button (Available to all) -->
-                        <a class="nav-link" onclick="app.openCreatePublicTaskModal()" style="color:var(--accent-color);">+ DEPLOY PUBLIC OP</a>
-                        
-                        <a class="nav-link" onclick="app.switchUserTab('leaderboard')">LEADERBOARD</a>
-                        <a class="nav-link" onclick="app.switchUserTab('profile')">HISTORY</a>
-                    </nav>
+    <!-- Top App Bar -->
+    <header class="top-app-bar">
+        <div class="brand">
+            <span class="brand-name">URQUEST</span>
+            <span class="brand-sub">// AGENT PROTOCOL</span>
+        </div>
+        <div class="bar-right">
+            <div class="stat-block">
+                <span class="stat-label">CURRENT LEVEL</span>
+                <span class="stat-val" id="user-level">LVL -</span>
+            </div>
+            <div class="stat-block">
+                <span class="stat-label">XP BALANCE</span>
+                <span class="stat-val xp">
+                    <span class="material-symbols-outlined" style="font-size:16px;">toll</span>
+                    <span id="user-xp">0 XP</span>
+                </span>
+            </div>
+            <button class="icon-btn">
+                <span class="material-symbols-outlined">notifications</span>
+            </button>
+            <button class="icon-btn">
+                <span class="material-symbols-outlined">settings</span>
+            </button>
+            <button class="btn-3d" onclick="app.logout()" style="margin-left:16px; padding:8px 32px;">LOGOUT</button>
+        </div>
+        <div class="bar-glow"></div>
+    </header>
 
-                    <!-- ORG SECTION -->
-                    <div style="margin-top:2rem; border-top:1px solid #333; padding-top:1rem;">
-                        <div style="color:#888; font-size:0.7rem; margin-bottom:10px;">ORGANIZATION AFFILIATION</div>
-                        
-                        <!-- CASE 1: No Org (List Joinable Orgs) -->
-                        <div id="org-none-ui">
-                            <button class="cyber-btn secondary" onclick="app.showCreateOrgModal()" style="width:100%; font-size:0.8rem; margin-bottom:1rem;">CREATE ORGANIZATION</button>
-                            <div style="color:#fff; font-size:0.8rem; margin-bottom:0.5rem;">OR SCAN FACTIONS:</div>
-                            <div id="join-org-list" style="display:flex; flex-direction:column; gap:5px; max-height:200px; overflow-y:auto;">
-                                <!-- Org List Items -->
-                                <div style="font-size:0.7rem; color:#666;">SCANNING...</div>
+    <!-- Side Nav Bar -->
+    <aside class="side-nav">
+        <!-- Player Profile Widget -->
+        <div class="profile-widget">
+            <div class="profile-avatar">
+                <span class="rank-badge" id="user-rank-display">#?</span>
+            </div>
+            <div class="profile-name" id="username-display">AGENT</div>
+            <div class="profile-id">AGENT ID: URQ-0001</div>
+        </div>
+
+        <!-- Navigation Links -->
+        <nav>
+            <a class="nav-link active" onclick="app.switchUserTab('quests')">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+                QUEST BOARD
+            </a>
+            <a class="nav-link" onclick="app.openCreatePublicTaskModal()" style="color:var(--color-primary-fixed-dim);">
+                <span class="material-symbols-outlined">rocket_launch</span>
+                DEPLOY PUBLIC OP
+            </a>
+            <a class="nav-link" onclick="app.switchUserTab('leaderboard')">
+                <span class="material-symbols-outlined">leaderboard</span>
+                LEADERBOARD
+            </a>
+            <a class="nav-link" onclick="app.switchUserTab('profile')">
+                <span class="material-symbols-outlined">history</span>
+                HISTORY
+            </a>
+        </nav>
+
+        <!-- Bottom Section -->
+        <div class="sidebar-bottom">
+            <!-- Organization Affiliation -->
+            <div class="section-label">ORGANIZATION AFFILIATION</div>
+
+            <!-- CASE 1: No Org -->
+            <div id="org-none-ui">
+                <button class="btn-3d" onclick="app.showCreateOrgModal()" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:12px;">
+                    <span class="material-symbols-outlined" style="font-size:18px; color:var(--color-primary);">add</span>
+                    CREATE ORGANIZATION
+                </button>
+                <div class="factions-box">
+                    <div class="factions-label">OR SCAN FACTIONS:</div>
+                    <div id="join-org-list" class="factions-empty">
+                        SCANNING...
+                    </div>
+                </div>
+            </div>
+
+            <!-- CASE 2: Has Org -->
+            <div id="org-exists-ui" style="display:none; text-align:center;">
+                <div id="my-org-name" style="color:var(--color-secondary); font-weight:bold; margin-bottom:10px; font-family:var(--font-headline);">ORG NAME</div>
+                <div id="org-role-badge" class="badge" style="margin-bottom:12px; display:inline-block;">MEMBER</div>
+                <button id="manage-org-btn" class="btn-3d-primary" onclick="window.location.href='org-dashboard.html'" style="width:100%; display:none; margin-bottom:10px; padding:10px;">MANAGE ORG</button>
+                <button id="leave-org-btn" class="btn-danger" onclick="app.leaveOrg()" style="width:100%; font-size:10px; padding:8px;">DISAVOW FACTION</button>
+            </div>
+
+            <!-- Footer -->
+            <div class="sidebar-footer">
+                <a href="factions.html">
+                    <span class="material-symbols-outlined">radar</span>
+                    Factions
+                </a>
+                <a href="about.html">
+                    <span class="material-symbols-outlined">terminal</span>
+                    Protocol v1.0
+                </a>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+        <!-- TAB: QUESTS -->
+        <section id="tab-quests" class="active">
+            <div class="page-header">
+                <div>
+                    <h1>
+                        <span class="accent-bar"></span>
+                        ACTIVE QUESTS
+                    </h1>
+                    <p class="subtitle">Select an operation to begin deployment.</p>
+                </div>
+                <button class="btn-3d" style="display:flex; align-items:center; gap:8px; padding:8px 24px;">
+                    <span class="material-symbols-outlined" style="font-size:16px;">filter_list</span> FILTER
+                </button>
+            </div>
+
+            <!-- Bento Grid -->
+            <div style="display:grid; grid-template-columns: 1fr 2fr; gap:var(--gutter);">
+                <!-- Left Column: XP & Stats -->
+                <div style="display:flex; flex-direction:column; gap:var(--gutter);">
+                    <!-- XP Widget -->
+                    <div class="xp-widget input-recessed">
+                        <div class="xp-header">
+                            <div>
+                                <div class="xp-status-label">CURRENT STATUS</div>
+                                <div class="xp-rank-name" id="xp-rank-name">ROOKIE</div>
+                            </div>
+                            <div class="xp-icon-box">
+                                <span class="material-symbols-outlined">star</span>
                             </div>
                         </div>
-
-                        <!-- CASE 2: Has Org (Member or Owner) -->
-                        <div id="org-exists-ui" style="display:none; text-align:center;">
-                            <div id="my-org-name" style="color:var(--secondary-color); font-weight:bold; margin-bottom:10px;">ORG NAME</div>
-                            <div id="org-role-badge" class="badge" style="margin-bottom:1rem; display:inline-block;">MEMBER</div>
-                            
-                            <!-- ACTIONS -->
-                            <button id="manage-org-btn" class="cyber-btn" onclick="window.location.href='org-dashboard.html'" style="width:100%; font-size:0.8rem; display:none; margin-bottom:10px;">MANAGE ORG</button>
-                            
-                            <!-- Leave Button (Small & Red) -->
-                             <button id="leave-org-btn" class="cyber-btn danger" onclick="app.leaveOrg()" style="width:100%; font-size:0.7rem; padding:5px;">DISAVOW FACTION</button>
+                        <div class="xp-bar-meta">
+                            <span id="xp-total-display">TOTAL XP: 0</span>
+                            <span id="xp-next-display">NEXT RANK: 1000</span>
+                        </div>
+                        <div class="xp-bar-track">
+                            <div class="xp-bar-fill scanning-bar" id="xp-bar-fill" style="width:0%;"></div>
                         </div>
                     </div>
-                </aside>
+                    <!-- Quick Stats -->
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                        <div class="stat-box input-recessed accent-cyan">
+                            <div class="stat-box-label">MISSIONS COMPLETED</div>
+                            <div class="stat-box-value" id="stat-missions">0</div>
+                        </div>
+                        <div class="stat-box input-recessed accent-magenta">
+                            <div class="stat-box-label">ACTIVE STREAK</div>
+                            <div class="stat-box-value" id="stat-streak">0 DAYS</div>
+                        </div>
+                    </div>
+                </div>
 
-                <main class="main-content" style="background: url('grid.png');"> 
-                    
-                    <!-- TAB: QUESTS -->
-                    <section id="tab-quests" class="active">
-                        <h2 style="border-bottom:1px solid #333; padding-bottom:0.5rem;">AVAILABLE MISSIONS</h2>
-                        <div id="quest-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:1.5rem; margin-top:1.5rem;"></div>
-                    </section>
-
-                    <!-- TAB: LEADERBOARD -->
-                    <section id="tab-leaderboard" style="display:none">
-                        <h2 style="border-bottom:1px solid #333; padding-bottom:0.5rem;">TOP AGENTS</h2>
-                        <table style="width:100%; border-collapse:collapse; margin-top:1rem;">
-                            <thead>
-                                <tr style="text-align:left; color:#888;">
-                                    <th style="padding:10px;">RANK</th>
-                                    <th style="padding:10px;">AGENT</th>
-                                    <th style="padding:10px;">TOTAL XP</th>
-                                </tr>
-                            </thead>
-                            <tbody id="leaderboard-body"></tbody>
-                        </table>
-                    </section>
-
-                    <!-- TAB: HISTORY/PROFILE -->
-                    <section id="tab-profile" style="display:none">
-                        <h2 style="border-bottom:1px solid #333; padding-bottom:0.5rem;">MISSION LOG</h2>
-                        <div id="history-list" style="margin-top:1rem; display:flex; flex-direction:column; gap:0.8rem;"></div>
-                    </section>
-
-                </main>
+                <!-- Right Column: Quest Cards -->
+                <div id="quest-grid" style="display:flex; flex-direction:column; gap:24px;">
+                    <!-- Quest cards populated by JS -->
+                </div>
             </div>
-        </div>
-    </div>
+        </section>
+
+        <!-- TAB: LEADERBOARD -->
+        <section id="tab-leaderboard" style="display:none">
+            <div class="page-header">
+                <div>
+                    <h1>
+                        <span class="accent-bar"></span>
+                        TOP AGENTS
+                    </h1>
+                    <p class="subtitle">Global rankings by total XP earned.</p>
+                </div>
+            </div>
+            <div class="glass-panel" style="border-radius:12px; padding:0; overflow:hidden;">
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>RANK</th>
+                            <th>AGENT</th>
+                            <th>TOTAL XP</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- TAB: HISTORY/PROFILE -->
+        <section id="tab-profile" style="display:none">
+            <div class="page-header">
+                <div>
+                    <h1>
+                        <span class="accent-bar"></span>
+                        MISSION LOG
+                    </h1>
+                    <p class="subtitle">Record of completed and failed operations.</p>
+                </div>
+            </div>
+            <div id="history-list" style="display:flex; flex-direction:column; gap:12px;"></div>
+        </section>
+    </main>
 
     <!-- MODAL: SUBMISSION -->
-    <div id="submission-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100; align-items:center; justify-content:center; backdrop-filter:blur(5px);">
-        <div class="cyber-card" style="width:100%; max-width:500px; background:#000;">
-            <h3 style="color:var(--primary-color);">SUBMIT PROOF</h3>
-            <p style="color:#888; margin-bottom:1rem;">Provide evidence of mission completion.</p>
+    <div id="submission-modal" class="modal-overlay">
+        <div class="glass-panel modal-card corner-accents">
+            <h3 class="accent">SUBMIT PROOF</h3>
+            <p class="modal-desc">Provide evidence of mission completion.</p>
             <input type="hidden" id="modal-task-id">
             <input type="url" id="proof-link" class="cyber-input" placeholder="https://..." required>
-            <div style="display:flex; gap:10px; margin-top:1rem;">
-                <button class="cyber-btn" onclick="app.submitProof()" style="flex:1;">UPLOAD</button>
-                <button class="cyber-btn danger" onclick="document.getElementById('submission-modal').style.display='none'" style="flex:1;">CANCEL</button>
+            <div class="modal-actions">
+                <button class="btn-3d-primary" onclick="app.submitProof()" style="padding:12px;">UPLOAD</button>
+                <button class="btn-danger" onclick="document.getElementById('submission-modal').style.display='none'" style="padding:12px;">CANCEL</button>
             </div>
         </div>
     </div>
-    
+
     <!-- MODAL: CREATE PUBLIC TASK -->
-    <div id="create-public-task-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100; align-items:center; justify-content:center; backdrop-filter:blur(5px);">
-        <div class="cyber-card" style="width:100%; max-width:500px; background:#000;">
-            <h3 style="color:var(--accent-color);">DEPLOY PUBLIC OPERATION</h3>
-            <p style="color:#888; margin-bottom:1rem;">Create a mission available to ALL agents.</p>
+    <div id="create-public-task-modal" class="modal-overlay">
+        <div class="glass-panel modal-card corner-accents">
+            <h3 class="accent">DEPLOY PUBLIC OPERATION</h3>
+            <p class="modal-desc">Create a mission available to ALL agents.</p>
             <form id="create-public-task-form">
-                <input type="text" id="ptask-title" class="cyber-input" placeholder="MISSION TITLE" required style="margin-bottom:10px;">
-                <textarea id="ptask-desc" class="cyber-input" placeholder="BRIEFING" required rows="3" style="margin-bottom:10px;"></textarea>
-                <div style="display:flex; gap:10px; margin-bottom:10px;">
-                    <input type="number" id="ptask-xp" class="cyber-input" placeholder="XP" required value="50">
-                    <select id="ptask-diff" class="cyber-input">
-                        <option value="Easy">Easy</option>
-                        <option value="Medium">Medium</option>
-                        <option value="Hard">Hard</option>
-                    </select>
+                <div class="form-group">
+                    <label>MISSION TITLE</label>
+                    <input type="text" id="ptask-title" class="cyber-input" placeholder="MISSION TITLE" required>
                 </div>
-                <div style="display:flex; gap:10px; margin-top:1rem;">
-                    <button type="submit" class="cyber-btn secondary" style="flex:1;">DEPLOY</button>
-                    <button type="button" class="cyber-btn danger" onclick="document.getElementById('create-public-task-modal').style.display='none'" style="flex:1;">CANCEL</button>
+                <div class="form-group">
+                    <label>BRIEFING</label>
+                    <textarea id="ptask-desc" class="cyber-input" placeholder="BRIEFING" required rows="3"></textarea>
+                </div>
+                <div style="display:flex; gap:16px;">
+                    <div class="form-group" style="flex:1;">
+                        <label>XP REWARD</label>
+                        <input type="number" id="ptask-xp" class="cyber-input" placeholder="XP" required value="50">
+                    </div>
+                    <div class="form-group" style="flex:1;">
+                        <label>DIFFICULTY</label>
+                        <div class="select-wrap">
+                            <select id="ptask-diff" class="cyber-input">
+                                <option value="Easy">EASY</option>
+                                <option value="Medium">MEDIUM</option>
+                                <option value="Hard">HARD</option>
+                            </select>
+                            <span class="material-symbols-outlined select-arrow">arrow_drop_down</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn-3d-primary" style="padding:12px;">
+                        <span style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                            <span class="material-symbols-outlined" style="font-size:18px;">rocket_launch</span>
+                            DEPLOY
+                        </span>
+                    </button>
+                    <button type="button" class="btn-danger" onclick="document.getElementById('create-public-task-modal').style.display='none'" style="padding:12px;">CANCEL</button>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- MODAL: CREATE ORG -->
-    <div id="create-org-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100; align-items:center; justify-content:center; backdrop-filter:blur(5px);">
-        <div class="cyber-card" style="width:100%; max-width:500px; background:#000;">
-            <h3 style="color:var(--secondary-color);">ESTABLISH ORGANIZATION</h3>
-            <p style="color:#888; margin-bottom:1rem;">Create a new faction.</p>
-            <input type="text" id="new-org-name" class="cyber-input" placeholder="ORGANIZATION NAME" required>
-            <div style="display:flex; gap:10px; margin-top:1rem;">
-                <button class="cyber-btn secondary" onclick="app.createOrg()" style="flex:1;">ESTABLISH</button>
-                <button class="cyber-btn danger" onclick="document.getElementById('create-org-modal').style.display='none'" style="flex:1;">CANCEL</button>
+    <div id="create-org-modal" class="modal-overlay">
+        <div class="glass-panel modal-card corner-accents">
+            <h3 class="secondary">ESTABLISH ORGANIZATION</h3>
+            <p class="modal-desc">Create a new faction.</p>
+            <div class="form-group">
+                <label>ORGANIZATION NAME</label>
+                <input type="text" id="new-org-name" class="cyber-input" placeholder="ORGANIZATION NAME" required>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-3d-primary" onclick="app.createOrg()" style="padding:12px;">ESTABLISH</button>
+                <button class="btn-danger" onclick="document.getElementById('create-org-modal').style.display='none'" style="padding:12px;">CANCEL</button>
             </div>
         </div>
     </div>
 
     <!-- MODAL: ORG PUBLIC PROFILE -->
-    <div id="org-profile-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:150; align-items:center; justify-content:center; backdrop-filter:blur(8px);">
-        <div class="cyber-card" style="width:100%; max-width:600px; background:#0a0a0e; border:1px solid var(--secondary-color);">
+    <div id="org-profile-modal" class="modal-overlay" style="z-index:150;">
+        <div class="glass-panel modal-card corner-accents" style="max-width:600px; border:1px solid var(--color-secondary);">
             <div id="org-profile-content" style="text-align:center;">
-                <div id="org-profile-img" style="width:100px; height:100px; background:#333; margin:0 auto 1rem; border-radius:50%; border:2px solid var(--secondary-color); background-size:cover; background-position:center;"></div>
-                <h2 id="org-profile-name" style="color:var(--secondary-color); margin-bottom:0.5rem;">ORG NAME</h2>
-                <div style="color:#888; font-size:0.8rem; margin-bottom:1.5rem;">MEMBERS: <span id="org-profile-count">0</span></div>
-                
-                <p id="org-profile-desc" style="color:#ddd; margin-bottom:2rem; line-height:1.6; text-align:left; background:#111; padding:15px; border-radius:5px;">
+                <div id="org-profile-img" style="width:100px; height:100px; background:#333; margin:0 auto 16px; border-radius:50%; border:2px solid var(--color-secondary); background-size:cover; background-position:center;"></div>
+                <h2 id="org-profile-name" style="color:var(--color-secondary); margin-bottom:8px; font-family:var(--font-headline); font-size:24px; font-weight:600;">ORG NAME</h2>
+                <div style="color:var(--color-on-surface-variant); font-size:14px; margin-bottom:24px;">MEMBERS: <span id="org-profile-count">0</span></div>
+                <p id="org-profile-desc" style="color:var(--color-on-surface); margin-bottom:32px; line-height:1.6; text-align:left; background:#111; padding:16px; border-radius:8px; font-size:14px;">
                     Loading intel...
                 </p>
-                
-                <div style="display:flex; gap:10px; margin-top:1rem;">
-                    <button id="org-profile-join-btn" class="cyber-btn" style="flex:1;">INITIATE ALLIANCE (JOIN)</button>
-                    <button class="cyber-btn danger" onclick="document.getElementById('org-profile-modal').style.display='none'" style="flex:1;">CLOSE</button>
+                <div class="modal-actions">
+                    <button id="org-profile-join-btn" class="btn-3d-primary" style="padding:12px;">INITIATE ALLIANCE (JOIN)</button>
+                    <button class="btn-danger" onclick="document.getElementById('org-profile-modal').style.display='none'" style="padding:12px;">CLOSE</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="notification-area" style="position:fixed; bottom:20px; right:20px;"></div>
+    <div id="notification-area" style="position:fixed; bottom:20px; right:20px; z-index:200;"></div>
     <script src="app.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {

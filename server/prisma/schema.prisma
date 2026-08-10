@@ -1,0 +1,84 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id             String   @id @default(uuid())
+  username       String   @unique
+  email          String?  @unique
+  password       String?
+  profilePicture String?
+  provider       String   @default("email")
+  totalXp        Int      @default(0)
+  memberOrgId    Int?
+  orgRoleId      Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  memberOrg    Organization? @relation("OrgMembers", fields: [memberOrgId], references: [id])
+  orgRole      OrgRole?      @relation(fields: [orgRoleId], references: [id])
+  ownedOrgs    Organization[] @relation("OrgOwner")
+  createdTasks Task[]
+  submissions  Submission[]
+}
+
+model Organization {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  ownerUserId String
+  description String?
+  imageUrl    String?
+
+  owner   User      @relation("OrgOwner", fields: [ownerUserId], references: [id])
+  members User[]    @relation("OrgMembers")
+  roles   OrgRole[]
+  tasks   Task[]
+}
+
+model OrgRole {
+  id            Int     @id @default(autoincrement())
+  orgId         Int
+  name          String
+  rank          Int     @default(1)
+  canCreateTask Boolean @default(false)
+
+  org   Organization @relation(fields: [orgId], references: [id])
+  users User[]
+}
+
+model Task {
+  id            Int       @id @default(autoincrement())
+  creatorOrgId  Int?
+  creatorUserId String
+  title         String
+  description   String?
+  xpReward      Int
+  difficulty    String?
+  deadline      DateTime?
+  status        String    @default("OPEN")
+  visibility    String    @default("PUBLIC")
+  assigneeIds   String?
+
+  creatorOrg  Organization? @relation(fields: [creatorOrgId], references: [id])
+  creator     User          @relation(fields: [creatorUserId], references: [id])
+  submissions Submission[]
+}
+
+model Submission {
+  id        Int     @id @default(autoincrement())
+  taskId    Int
+  userId    String
+  proofLink String?
+  status    String  @default("PENDING")
+  feedback  String?
+
+  task Task @relation(fields: [taskId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+}

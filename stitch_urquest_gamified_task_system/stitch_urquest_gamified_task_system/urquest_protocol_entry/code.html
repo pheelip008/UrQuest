@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>URQUEST // SYSTEM ACCESS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;700&amp;family=Geist:wght@700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-surface": "#e5e1e4",
+                        "error-container": "#93000a",
+                        "on-error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#ffabf3",
+                        "on-surface-variant": "#b9cacb",
+                        "on-secondary-container": "#500050",
+                        "on-primary-fixed-variant": "#004f53",
+                        "surface-variant": "#353437",
+                        "on-primary-fixed": "#002022",
+                        "on-secondary-fixed-variant": "#810081",
+                        "primary-container": "#00f3ff",
+                        "tertiary-container": "#96f400",
+                        "secondary-fixed": "#ffd7f5",
+                        "primary": "#e3fdff",
+                        "background": "#131315",
+                        "tertiary-fixed-dim": "#87dd00",
+                        "surface-container": "#201f21",
+                        "on-secondary-fixed": "#380038",
+                        "on-tertiary-fixed-variant": "#2e4f00",
+                        "on-tertiary-container": "#3f6b00",
+                        "surface-tint": "#00dce6",
+                        "on-error": "#690005",
+                        "secondary": "#ffabf3",
+                        "surface-container-high": "#2a2a2c",
+                        "on-tertiary": "#1e3700",
+                        "tertiary-fixed": "#9bfc00",
+                        "outline-variant": "#3a494b",
+                        "on-primary": "#00373a",
+                        "surface-dim": "#131315",
+                        "surface-container-highest": "#353437",
+                        "outline": "#849495",
+                        "surface-bright": "#39393b",
+                        "on-primary-container": "#006b71",
+                        "on-background": "#e5e1e4",
+                        "inverse-primary": "#00696f",
+                        "primary-fixed-dim": "#00dce6",
+                        "tertiary": "#ecffd0",
+                        "surface-container-lowest": "#0e0e10",
+                        "primary-fixed": "#6ff6ff",
+                        "inverse-surface": "#e5e1e4",
+                        "inverse-on-surface": "#313032",
+                        "surface": "#131315",
+                        "surface-container-low": "#1b1b1d",
+                        "on-secondary": "#5b005b",
+                        "on-tertiary-fixed": "#0f2000",
+                        "secondary-container": "#fe00fe",
+                        "error": "#ffb4ab"
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        lg: "0.5rem",
+                        xl: "0.75rem",
+                        full: "9999px"
+                    },
+                    spacing: {
+                        "margin-mobile": "16px",
+                        "unit": "4px",
+                        "gutter": "24px",
+                        "margin-desktop": "40px",
+                        "grid-size": "32px"
+                    },
+                    fontFamily: {
+                        "headline-lg": ["Space Grotesk"],
+                        "body-lg": ["JetBrains Mono"],
+                        "headline-md": ["Space Grotesk"],
+                        "display-lg": ["Space Grotesk"],
+                        "stat-value": ["Space Grotesk"],
+                        "body-md": ["JetBrains Mono"],
+                        "label-caps": ["Geist"]
+                    },
+                    fontSize: {
+                        "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "0.02em", fontWeight: "600" }],
+                        "body-lg": ["18px", { lineHeight: "28px", fontWeight: "400" }],
+                        "headline-md": ["24px", { lineHeight: "32px", fontWeight: "600" }],
+                        "display-lg": ["48px", { lineHeight: "56px", letterSpacing: "-0.04em", fontWeight: "700" }],
+                        "stat-value": ["20px", { lineHeight: "24px", fontWeight: "700" }],
+                        "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "label-caps": ["12px", { lineHeight: "16px", letterSpacing: "0.1em", fontWeight: "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .bg-grid-pattern {
+            background-size: 32px 32px;
+            background-image: 
+                linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+        }
+        
+        @keyframes glitch {
+            0% { transform: translate(0) }
+            20% { transform: translate(-2px, 2px) }
+            40% { transform: translate(-2px, -2px) }
+            60% { transform: translate(2px, 2px) }
+            80% { transform: translate(2px, -2px) }
+            100% { transform: translate(0) }
+        }
+        
+        .hover-glitch:hover {
+            animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
+            background-color: var(--color-primary-fixed-dim);
+            color: var(--color-on-primary-fixed);
+        }
+        
+        .neon-glow {
+            box-shadow: 0 0 10px rgba(0, 220, 230, 0.5), inset 0 0 5px rgba(0, 220, 230, 0.3);
+        }
+        
+        .glass-panel {
+            background-color: #1a1a1c;
+            border: 1px solid #3a3a3c;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.05);
+        }
+        
+        .btn-3d {
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+            transition: all 0.2s ease;
+        }
+        
+        .btn-3d:active {
+            box-shadow: 0 1px 2px rgba(0,0,0,0.5), inset 0 1px 3px rgba(0,0,0,0.3);
+            transform: translateY(2px);
+        }
+        
+        .input-recessed {
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.05);
+        }
+    </style>
+</head>
+<body class="bg-[#111] text-on-background min-h-screen relative overflow-hidden font-body-md flex items-center justify-center">
+<!-- Ambient Background Effect -->
+<div class="absolute inset-0 z-0 bg-grid-pattern pointer-events-none opacity-50"></div>
+<div class="absolute inset-0 z-0 opacity-10 pointer-events-none" style="background: radial-gradient(circle at 50% 50%, var(--color-primary-fixed-dim) 0%, transparent 60%); blur(100px);"></div>
+<!-- Main Auth Module -->
+<main class="relative z-10 w-full max-w-md px-margin-mobile md:px-0">
+<!-- Header -->
+<header class="text-center mb-10">
+<h1 class="font-display-lg text-display-lg text-primary tracking-tighter uppercase relative inline-block group">
+<span class="relative z-10 drop-shadow-[0_0_8px_rgba(227,253,255,0.8)]">URQUEST</span>
+<span class="absolute top-0 left-[2px] text-secondary opacity-50 mix-blend-screen -z-10 group-hover:animate-[glitch_0.2s_infinite]">URQUEST</span>
+<span class="absolute top-0 -left-[2px] text-tertiary-container opacity-50 mix-blend-screen -z-10 group-hover:animate-[glitch_0.3s_infinite_reverse]">URQUEST</span>
+</h1>
+<p class="font-label-caps text-label-caps text-on-surface-variant mt-2 tracking-[0.2em] font-bold">// SYSTEM ACCESS</p>
+</header>
+<!-- Auth Card -->
+<div class="glass-panel p-8 rounded-xl relative overflow-hidden group">
+<!-- Decorative corner accent -->
+<div class="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-outline-variant opacity-50"></div>
+<div class="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-outline-variant opacity-50"></div>
+<!-- Role Toggle -->
+<div class="flex p-1 bg-surface-container-lowest rounded-lg mb-8 border border-outline-variant/50 input-recessed">
+<button class="flex-1 py-2 font-label-caps text-label-caps text-on-primary bg-primary rounded-md shadow-[0_2px_10px_rgba(0,220,230,0.4),inset_0_1px_0_rgba(255,255,255,0.5)] transition-all font-bold">
+                    AGENT
+                </button>
+<button class="flex-1 py-2 font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-colors font-bold">
+                    ORGANIZATION
+                </button>
+</div>
+<!-- OAuth Button -->
+<button class="w-full mb-6 flex items-center justify-center gap-3 py-3 bg-[#222224] border border-[#333] rounded-lg hover:border-outline transition-all duration-300 relative overflow-hidden group/btn btn-3d">
+<span class="material-symbols-outlined text-[20px] text-on-surface">account_circle</span>
+<span class="font-body-md font-bold text-on-surface tracking-wide uppercase text-sm">CONTINUE WITH GOOGLE</span>
+</button>
+<!-- Divider -->
+<div class="flex items-center gap-4 mb-6">
+<div class="h-px bg-outline-variant/50 flex-1"></div>
+<span class="font-label-caps text-label-caps text-outline font-bold">OR PROTOCOL OVERRIDE</span>
+<div class="h-px bg-outline-variant/50 flex-1"></div>
+</div>
+<!-- Form -->
+<form class="space-y-5">
+<!-- Email Input -->
+<div class="relative group/input">
+<label class="absolute -top-2.5 left-3 bg-[#1a1a1c] px-1 font-label-caps text-label-caps text-primary opacity-0 group-focus-within/input:opacity-100 transition-opacity z-10">IDENTIFIER</label>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3 text-outline-variant group-focus-within/input:text-primary transition-colors">mail</span>
+<input class="w-full bg-[#151517] border border-[#333] rounded-lg py-3 pl-10 pr-4 text-on-surface font-body-md focus:outline-none focus:border-primary focus:shadow-[0_0_8px_rgba(0,220,230,0.4)] transition-all placeholder:text-outline-variant placeholder:font-label-caps input-recessed" placeholder="EMAIL ADDRESS" type="email"/>
+</div>
+</div>
+<!-- Password Input -->
+<div class="relative group/input">
+<label class="absolute -top-2.5 left-3 bg-[#1a1a1c] px-1 font-label-caps text-label-caps text-primary opacity-0 group-focus-within/input:opacity-100 transition-opacity z-10">ACCESS CODE</label>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3 text-outline-variant group-focus-within/input:text-primary transition-colors">lock</span>
+<input class="w-full bg-[#151517] border border-[#333] rounded-lg py-3 pl-10 pr-4 text-on-surface font-body-md focus:outline-none focus:border-primary focus:shadow-[0_0_8px_rgba(0,220,230,0.4)] transition-all placeholder:text-outline-variant placeholder:font-label-caps input-recessed" placeholder="PASSWORD" type="password"/>
+<button class="absolute right-3 text-outline-variant hover:text-primary transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">visibility</span>
+</button>
+</div>
+</div>
+<div class="flex justify-between items-center mt-2">
+<label class="flex items-center gap-2 cursor-pointer group/cb">
+<div class="relative w-4 h-4 bg-[#151517] border border-[#333] rounded flex items-center justify-center group-hover/cb:border-primary transition-colors input-recessed">
+<!-- Checked state icon placeholder -->
+<span class="material-symbols-outlined text-[14px] text-primary hidden">check</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface-variant group-hover/cb:text-on-surface transition-colors font-bold">REMEMBER ME</span>
+</label>
+<a class="font-label-caps text-label-caps text-primary hover:text-primary-fixed transition-colors font-bold" href="#">DECRYPT PASSWORD?</a>
+</div>
+<!-- Submit Action -->
+<button class="w-full bg-primary text-on-primary font-headline-md text-headline-md py-3 mt-6 rounded-lg relative overflow-hidden group/submit transition-all hover-glitch btn-3d shadow-[0_0_20px_rgba(0,220,230,0.3),inset_0_1px_0_rgba(255,255,255,0.8)] font-bold tracking-wide" type="button">
+<span class="relative z-10 block w-full h-full text-lg drop-shadow-sm">INITIALIZE LOGIN</span>
+</button>
+</form>
+<div class="mt-8 text-center">
+<p class="font-label-caps text-label-caps text-on-surface-variant font-bold">NEW RECRUIT? <a class="text-primary hover:underline drop-shadow-[0_0_5px_rgba(227,253,255,0.5)]" href="#">REQUEST CLEARANCE</a></p>
+</div>
+</div>
+<!-- System Status Footer -->
+<footer class="mt-8 flex justify-between items-center border-t border-outline-variant/30 pt-4 px-2">
+<div class="flex items-center gap-2 text-tertiary-container font-label-caps text-label-caps font-bold">
+<span class="w-2 h-2 rounded-full bg-tertiary-container animate-pulse shadow-[0_0_8px_rgba(150,244,0,1)]"></span>
+                SYSTEM: ONLINE
+            </div>
+<div class="font-label-caps text-label-caps text-outline-variant font-bold">
+                v2.4.01 // SECURE
+            </div>
+</footer>
+</main>
+</body></html>

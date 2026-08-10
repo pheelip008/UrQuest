@@ -1,32 +1,150 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="dark" lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UrQuest - System Access</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <title>URQUEST // SYSTEM ACCESS</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
-    <div class="landing-wrap">
-        <div class="auth-box">
-            <h1 class="glitch" data-text="URQUEST">URQUEST</h1>
-            <p style="color:var(--secondary-color); letter-spacing:3px; margin-bottom:2rem;">SYSTEM ACCESS</p>
-            
-            <div id="auth-ui">
-                <input type="text" id="username" class="cyber-input" placeholder="CODENAME" required>
-                <input type="password" id="password" class="cyber-input" placeholder="PASSWORD" required>
-                
-                <div style="display:flex; gap:10px; margin-top:1rem;">
-                    <button onclick="app.login()" class="cyber-btn" style="flex:1">LOGIN</button>
-                    <button onclick="app.register()" class="cyber-btn secondary" style="flex:1">REGISTER</button>
+<body class="auth-page">
+    <!-- Background Effects -->
+    <div class="bg-grid-pattern"></div>
+    <div class="ambient-glow" style="position:absolute;inset:0;z-index:0;pointer-events:none;opacity:0.1;background:radial-gradient(circle at 50% 50%, var(--color-primary-fixed-dim) 0%, transparent 60%);filter:blur(100px);"></div>
+
+    <!-- Main Auth Module -->
+    <main class="auth-module">
+        <!-- Header -->
+        <header class="auth-header">
+            <h1 class="glitch-title">
+                <span style="position:relative;z-index:10;">URQUEST</span>
+                <span class="glitch-layer magenta" aria-hidden="true">URQUEST</span>
+                <span class="glitch-layer lime" aria-hidden="true">URQUEST</span>
+            </h1>
+            <p class="text-label-caps" style="color:var(--color-on-surface-variant); margin-top:8px; letter-spacing:0.2em;">// SYSTEM ACCESS</p>
+        </header>
+
+        <!-- Auth Card -->
+        <div class="glass-panel auth-card corner-accents">
+
+            <!-- Role Toggle -->
+            <div class="role-toggle" id="role-toggle">
+                <button class="active" onclick="app.setRole('user'); this.classList.add('active'); this.nextElementSibling.classList.remove('active');">AGENT</button>
+                <button onclick="app.setRole('org'); this.classList.add('active'); this.previousElementSibling.classList.remove('active');">ORGANIZATION</button>
+            </div>
+
+            <!-- OAuth Button -->
+            <button onclick="app.handleGoogleLogin()" class="btn-3d" style="width:100%; margin-bottom:24px; display:flex; align-items:center; justify-content:center; gap:12px; padding:12px;">
+                <span class="material-symbols-outlined" style="font-size:20px;">account_circle</span>
+                <span class="text-label-caps" style="font-size:14px;">CONTINUE WITH GOOGLE</span>
+            </button>
+
+            <!-- Divider -->
+            <div class="auth-divider">
+                <div class="line"></div>
+                <span>OR PROTOCOL OVERRIDE</span>
+                <div class="line"></div>
+            </div>
+
+            <!-- LOGIN FORM -->
+            <div id="login-ui">
+                <!-- Email Input -->
+                <div class="auth-input-group">
+                    <label class="floating-label">IDENTIFIER</label>
+                    <div class="input-wrap">
+                        <span class="material-symbols-outlined input-icon">mail</span>
+                        <input type="email" id="email" class="cyber-input" placeholder="EMAIL ADDRESS" required style="padding-left:40px;">
+                    </div>
+                </div>
+
+                <!-- Password Input -->
+                <div class="auth-input-group">
+                    <label class="floating-label">ACCESS CODE</label>
+                    <div class="input-wrap">
+                        <span class="material-symbols-outlined input-icon">lock</span>
+                        <input type="password" id="password" class="cyber-input" placeholder="PASSWORD" required style="padding-left:40px;">
+                        <button class="toggle-pw" type="button" onclick="const p=document.getElementById('password'); p.type = p.type==='password'?'text':'password';">
+                            <span class="material-symbols-outlined" style="font-size:20px;">visibility</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Meta Row -->
+                <div class="auth-meta-row">
+                    <label>
+                        <input type="checkbox" id="remember-me" style="display:none;">
+                        <span class="checkbox-custom" onclick="this.previousElementSibling.checked = !this.previousElementSibling.checked; this.style.backgroundColor = this.previousElementSibling.checked ? 'var(--color-primary)' : '#151517';"></span>
+                        REMEMBER ME
+                    </label>
+                    <a href="#">DECRYPT PASSWORD?</a>
+                </div>
+
+                <!-- Submit -->
+                <button onclick="app.login()" class="btn-primary-glow" type="button">
+                    <span style="position:relative;z-index:10;font-size:18px;">INITIALIZE LOGIN</span>
+                </button>
+
+                <!-- Switch to Register -->
+                <div class="auth-switch">
+                    NEW RECRUIT? <a href="#" onclick="app.showRegisterForm(); return false;">REQUEST CLEARANCE</a>
                 </div>
             </div>
-            <div id="msg-area" style="margin-top:1rem; min-height:20px; color:var(--error-color); font-size:0.8rem;"></div>
+
+            <!-- REGISTER FORM (hidden by default) -->
+            <div id="register-ui" style="display:none;">
+                <!-- Username Input -->
+                <div class="auth-input-group">
+                    <label class="floating-label">CODENAME</label>
+                    <div class="input-wrap">
+                        <span class="material-symbols-outlined input-icon">badge</span>
+                        <input type="text" id="username" class="cyber-input" placeholder="CODENAME" required style="padding-left:40px;">
+                    </div>
+                </div>
+
+                <!-- Email Input -->
+                <div class="auth-input-group">
+                    <label class="floating-label">IDENTIFIER</label>
+                    <div class="input-wrap">
+                        <span class="material-symbols-outlined input-icon">mail</span>
+                        <input type="email" id="reg-email" class="cyber-input" placeholder="EMAIL ADDRESS" required style="padding-left:40px;">
+                    </div>
+                </div>
+
+                <!-- Password Input -->
+                <div class="auth-input-group">
+                    <label class="floating-label">ACCESS CODE</label>
+                    <div class="input-wrap">
+                        <span class="material-symbols-outlined input-icon">lock</span>
+                        <input type="password" id="reg-password" class="cyber-input" placeholder="PASSWORD (MIN 8 CHARS)" required style="padding-left:40px;">
+                    </div>
+                </div>
+
+                <!-- Submit -->
+                <button onclick="app.register()" class="btn-primary-glow" type="button" style="margin-top:8px;">
+                    <span style="position:relative;z-index:10;font-size:18px;">REQUEST CLEARANCE</span>
+                </button>
+
+                <!-- Switch to Login -->
+                <div class="auth-switch">
+                    HAVE AN ACCOUNT? <a href="#" onclick="app.showLoginForm(); return false;">LOGIN</a>
+                </div>
+            </div>
+
+            <div id="msg-area" style="margin-top:16px; min-height:20px; color:var(--color-error); font-family:var(--font-body); font-size:14px;"></div>
         </div>
-    </div>
-    
-    <div id="notification-area" style="position:fixed; bottom:20px; right:20px;"></div>
-    <script src="app.js"></script> 
+
+        <!-- System Status Footer -->
+        <footer class="system-footer">
+            <div class="status">
+                <span class="dot"></span>
+                SYSTEM: ONLINE
+            </div>
+            <div class="version">
+                v2.4.01 // SECURE
+            </div>
+        </footer>
+    </main>
+
+    <div id="notification-area" style="position:fixed; bottom:20px; right:20px; z-index:200;"></div>
+    <script src="app.js"></script>
 </body>
 </html>

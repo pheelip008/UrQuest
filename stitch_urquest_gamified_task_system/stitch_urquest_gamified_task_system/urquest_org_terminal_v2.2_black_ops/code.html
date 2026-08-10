@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Organization Dashboard - URQUEST</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;700&amp;family=Geist:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "secondary-container": "#fe00fe",
+                "on-primary": "#00373a",
+                "on-secondary": "#5b005b",
+                "error": "#ffb4ab",
+                "outline-variant": "#3a494b",
+                "secondary": "#ffabf3",
+                "on-secondary-fixed": "#380038",
+                "tertiary-fixed-dim": "#87dd00",
+                "surface-dim": "#131315",
+                "on-secondary-fixed-variant": "#810081",
+                "surface-container-low": "#1b1b1d",
+                "surface-container-highest": "#353437",
+                "on-tertiary": "#1e3700",
+                "on-error-container": "#ffdad6",
+                "outline": "#849495",
+                "primary-fixed": "#6ff6ff",
+                "primary-container": "#00f3ff",
+                "error-container": "#93000a",
+                "surface-variant": "#353437",
+                "secondary-fixed-dim": "#ffabf3",
+                "surface-tint": "#00dce6",
+                "surface": "#131315",
+                "inverse-primary": "#00696f",
+                "inverse-on-surface": "#313032",
+                "surface-container": "#201f21",
+                "on-tertiary-fixed": "#0f2000",
+                "on-primary-fixed-variant": "#004f53",
+                "on-surface-variant": "#b9cacb",
+                "on-primary-container": "#006b71",
+                "on-secondary-container": "#500050",
+                "inverse-surface": "#e5e1e4",
+                "on-background": "#e5e1e4",
+                "primary-fixed-dim": "#00dce6",
+                "secondary-fixed": "#ffd7f5",
+                "on-primary-fixed": "#002022",
+                "surface-container-high": "#2a2a2c",
+                "tertiary-container": "#96f400",
+                "on-surface": "#e5e1e4",
+                "tertiary-fixed": "#9bfc00",
+                "on-error": "#690005",
+                "surface-container-lowest": "#0e0e10",
+                "tertiary": "#ecffd0",
+                "on-tertiary-container": "#3f6b00",
+                "surface-bright": "#39393b",
+                "on-tertiary-fixed-variant": "#2e4f00",
+                "background": "#131315",
+                "primary": "#e3fdff"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "margin-mobile": "16px",
+                "grid-size": "32px",
+                "margin-desktop": "40px",
+                "unit": "4px",
+                "gutter": "24px"
+        },
+        "fontFamily": {
+                "body-lg": [
+                        "JetBrains Mono"
+                ],
+                "label-caps": [
+                        "Geist"
+                ],
+                "body-md": [
+                        "JetBrains Mono"
+                ],
+                "display-lg": [
+                        "Space Grotesk"
+                ],
+                "stat-value": [
+                        "Space Grotesk"
+                ],
+                "headline-md": [
+                        "Space Grotesk"
+                ],
+                "headline-lg": [
+                        "Space Grotesk"
+                ]
+        },
+        "fontSize": {
+                "body-lg": [
+                        "18px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-caps": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.1em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "body-md": [
+                        "16px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "display-lg": [
+                        "48px",
+                        {
+                                "lineHeight": "56px",
+                                "letterSpacing": "-0.04em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "stat-value": [
+                        "20px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-md": [
+                        "24px",
+                        {
+                                "lineHeight": "32px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "headline-lg": [
+                        "32px",
+                        {
+                                "lineHeight": "40px",
+                                "letterSpacing": "0.02em",
+                                "fontWeight": "600"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+        .bg-grid-pattern {
+            background-size: 32px 32px;
+            background-image: 
+                linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+        }
+        
+        .glass-panel {
+            background-color: #1a1a1c;
+            border: 1px solid #3a3a3c;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.05);
+        }
+        
+        .inner-glow {
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+
+        .btn-3d {
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+            transition: all 0.2s ease;
+        }
+        
+        .btn-3d:active {
+            box-shadow: 0 1px 2px rgba(0,0,0,0.5), inset 0 1px 3px rgba(0,0,0,0.3);
+            transform: translateY(2px);
+        }
+
+        .btn-3d-primary {
+            box-shadow: 0 4px 0 theme('colors.on-primary-fixed-variant'), 0 8px 16px rgba(0, 220, 230, 0.2), 0 0 15px rgba(0, 220, 230, 0.4);
+            transform: translateY(0);
+            transition: all 0.1s ease;
+        }
+        
+        .btn-3d-primary:active {
+            box-shadow: 0 0px 0 theme('colors.on-primary-fixed-variant'), 0 2px 4px rgba(0, 220, 230, 0.2), 0 0 5px rgba(0, 220, 230, 0.4);
+            transform: translateY(4px);
+        }
+        
+        .neon-border {
+            position: relative;
+        }
+        .neon-border::after {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            background: linear-gradient(45deg, theme('colors.primary-fixed-dim'), transparent);
+            z-index: -1;
+            opacity: 0.5;
+            transition: opacity 0.3s ease;
+            border-radius: inherit;
+            filter: blur(4px);
+        }
+        .neon-border:hover::after {
+            opacity: 1;
+        }
+        
+        .chamfer-tr {
+            clip-path: polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 0 100%);
+        }
+        
+        .glitch-hover:hover {
+            animation: glitch-skew 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both infinite;
+        }
+        
+        @keyframes glitch-skew {
+            0% { transform: skew(0deg); }
+            20% { transform: skew(-5deg); }
+            40% { transform: skew(5deg); }
+            60% { transform: skew(-2deg); }
+            80% { transform: skew(2deg); }
+            100% { transform: skew(0deg); }
+        }
+        
+        .scanline {
+            width: 100%;
+            height: 100px;
+            z-index: 9999;
+            position: absolute;
+            pointer-events: none;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
+            background-size: 100% 4px;
+            opacity: 0.1;
+        }
+
+        .terminal-input {
+            background-color: #151517;
+            border: 1px solid #333;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.05);
+        }
+        .terminal-input:focus {
+            border-color: theme('colors.primary');
+            box-shadow: 0 0 8px rgba(0,220,230,0.4), inset 0 2px 4px rgba(0,0,0,0.6);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-body-md overflow-x-hidden bg-[#000000] text-on-background relative">
+<div class="absolute inset-0 z-0 bg-grid-pattern pointer-events-none opacity-50"></div>
+<div class="scanline fixed inset-0 h-full w-full z-50"></div>
+<!-- TopAppBar -->
+<header class="bg-[#1a1a1c]/95 backdrop-blur-xl docked full-width top-0 z-50 border-b border-[#3a3a3c] shadow-[0_4px_20px_rgba(0,0,0,0.8)] flex justify-between items-center h-20 px-margin-desktop w-full transition-all duration-300 hidden md:flex relative">
+<div class="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
+<div class="flex items-center gap-4">
+<span class="font-display-lg text-headline-lg font-bold text-primary tracking-tighter uppercase glitch-hover inline-block drop-shadow-[0_0_8px_rgba(227,253,255,0.8)]">URQUEST <span class="text-on-surface-variant text-headline-md font-normal drop-shadow-none">// AGENT PROTOCOL</span></span>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-all duration-300 p-2 relative group">
+<div class="absolute inset-0 bg-primary/10 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<span class="material-symbols-outlined relative z-10" style="font-variation-settings: 'FILL' 0;">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-all duration-300 p-2 relative group">
+<div class="absolute inset-0 bg-primary/10 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<span class="material-symbols-outlined relative z-10" style="font-variation-settings: 'FILL' 0;">settings</span>
+</button>
+</div>
+<button class="bg-[#222224] border border-[#333] px-8 py-2 rounded-lg font-label-caps text-label-caps uppercase text-on-surface hover:border-outline transition-colors btn-3d font-bold">
+                LOGOUT
+            </button>
+</div>
+</header>
+<div class="flex flex-1 pt-[80px] h-[calc(100vh-80px)] relative z-10">
+<!-- SideNavBar -->
+<aside class="bg-[#1a1a1c]/95 backdrop-blur-md fixed left-0 top-20 h-[calc(100vh-80px)] w-[280px] border-r border-[#3a3a3c] shadow-[4px_0_20px_rgba(0,0,0,0.8)] flex flex-col py-6 gap-y-4 hidden md:flex z-40 overflow-y-auto">
+<div class="px-6 pb-6 border-b border-[#3a3a3c] mb-4 flex flex-col items-center">
+<div class="w-24 h-24 rounded-full border-2 border-primary p-1 mb-4 relative neon-border bg-[#151517]">
+<img class="w-full h-full rounded-full object-cover" data-alt="A high-contrast tech-noir avatar featuring a stylized digital agent mask glowing in cyan and magenta hues, set against a dark grid background, cyberpunk aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAYcYeXhMcBj793QgYVSEwhElRzBZKjpvcd0P2QJ7ld86HdmOur8yFPMshxHcLPtB3CiWy2L3Q52s92CDi9T_qvIWGiD_WgKMz83ZQRBa1BUmRfzdV8Z7rjPo9oqpvvhCsxs6PWrvz8MQK0yB64lZNJEweDafQJFUeyFqgNSiXSc4Kkd4JQ-SWgmZ3w5tom8pQ7TWoZnBmpu4Ir3lZx7Rj1T0nNfA6wHL5Ys7-5RI5oeDA63iGqtn8P"/>
+<div class="absolute -bottom-2 -right-2 bg-[#1a1a1c] border-2 border-primary text-primary font-label-caps px-2 py-1 rounded-sm text-[10px] shadow-[0_0_10px_rgba(0,220,230,0.3)] font-bold">#1</div>
+</div>
+<h2 class="font-headline-md text-[20px] font-bold text-on-background uppercase text-center mb-1 tracking-tight">PHEELIP_RAIPURE</h2>
+<p class="font-label-caps text-[10px] text-on-surface-variant text-center tracking-widest font-bold">AGENT ID: URQ-0001</p>
+</div>
+<nav class="flex-1 px-4 space-y-3">
+<a class="bg-[#151517] border border-[#333] text-on-surface hover:text-primary rounded-lg flex items-center px-4 py-3 font-label-caps text-label-caps uppercase tracking-wider transition-all duration-200 hover:border-outline btn-3d font-bold" href="#">
+<span class="material-symbols-outlined mr-4" style="font-variation-settings: 'FILL' 0;">dashboard</span>
+                    QUEST BOARD
+                </a>
+<a class="bg-primary text-on-primary rounded-lg flex items-center px-4 py-3 font-label-caps text-label-caps font-bold uppercase tracking-wider transition-all duration-200 btn-3d-primary relative overflow-hidden group shadow-[0_2px_10px_rgba(0,220,230,0.4),inset_0_1px_0_rgba(255,255,255,0.5)]" href="#">
+<div class="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 ease-in-out"></div>
+<span class="material-symbols-outlined mr-4 relative z-10" style="font-variation-settings: 'FILL' 1;">rocket_launch</span>
+<span class="relative z-10 block w-full h-full drop-shadow-sm">DEPLOY PUBLIC OP</span>
+</a>
+<a class="bg-[#222224] border border-[#333] text-on-surface hover:text-primary rounded-lg flex items-center px-4 py-3 font-label-caps text-label-caps uppercase tracking-wider transition-all duration-200 hover:border-outline btn-3d font-bold" href="#">
+<span class="material-symbols-outlined mr-4" style="font-variation-settings: 'FILL' 0;">leaderboard</span>
+                    LEADERBOARD
+                </a>
+<a class="bg-[#222224] border border-[#333] text-on-surface hover:text-primary rounded-lg flex items-center px-4 py-3 font-label-caps text-label-caps uppercase tracking-wider transition-all duration-200 hover:border-outline btn-3d font-bold" href="#">
+<span class="material-symbols-outlined mr-4" style="font-variation-settings: 'FILL' 0;">history</span>
+                    HISTORY
+                </a>
+</nav>
+<div class="px-4 mt-auto space-y-4">
+<div>
+<div class="text-[10px] text-on-surface-variant font-label-caps mb-2 tracking-widest font-bold">ORGANIZATION AFFILIATION</div>
+<button class="w-full bg-[#151517] border border-[#333] text-on-surface py-3 px-4 rounded-lg flex items-center justify-center font-label-caps uppercase hover:text-primary hover:border-outline transition-all duration-200 group btn-3d font-bold">
+<span class="material-symbols-outlined mr-2 text-primary group-hover:animate-pulse">add</span>
+                    CREATE ORGANIZATION
+                </button>
+</div>
+<div class="bg-[#111] border border-[#333] p-4 rounded-lg shadow-inner">
+<div class="text-[10px] text-on-surface-variant font-label-caps mb-2 tracking-widest font-bold">OR SCAN FACTIONS:</div>
+<div class="font-body-md text-on-surface/50 text-sm italic">NO FACTIONS FOUND</div>
+</div>
+</div>
+<div class="px-4 mt-4 pb-4 border-t border-[#3a3a3c] pt-4 flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]">radar</span>
+<span class="font-label-caps text-[10px] tracking-widest font-bold">AGENT PROTOCOL v1.0<br/>STAY SHARP, AGENT.</span>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-[280px] p-gutter md:p-margin-desktop overflow-y-auto relative z-10">
+<!-- Context Header -->
+<div class="mb-10 flex flex-col border-b border-[#3a3a3c] pb-6">
+<h1 class="font-headline-lg text-headline-lg font-bold text-primary uppercase flex items-center gap-3 drop-shadow-[0_0_8px_rgba(227,253,255,0.8)]">
+<span class="w-1 h-8 bg-primary block shadow-[0_0_10px_rgba(0,220,230,0.5)]"></span>
+                        DEPLOYABLE MISSIONS
+                    </h1>
+<p class="font-label-caps text-on-surface-variant mt-2 uppercase tracking-widest text-sm pl-4 font-bold">NO MISSIONS AVAILABLE</p>
+</div>
+<!-- Dashboard Content Container -->
+<div class="flex items-center justify-center min-h-[calc(100vh-350px)]">
+<!-- Deploy Form Card -->
+<div class="glass-panel w-full max-w-3xl rounded-xl chamfer-tr p-10 relative">
+<!-- Tactical Accents -->
+<div class="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-outline-variant opacity-50 -mt-px -mr-px rounded-tr-xl"></div>
+<div class="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-outline-variant opacity-50 -mb-px -ml-px rounded-bl-xl"></div>
+<div class="absolute top-4 right-8 font-label-caps text-[10px] text-primary/50 tracking-widest font-bold">SYS.REQ.01 // NEW_OP</div>
+<div class="mb-8 pb-4 border-b border-[#333]">
+<h2 class="font-headline-md text-headline-md font-bold text-on-background uppercase flex items-center gap-3">
+<span class="w-1 h-6 bg-primary block shadow-[0_0_8px_rgba(0,220,230,0.5)]"></span>
+                            DEPLOY PUBLIC OPERATION
+                        </h2>
+<p class="font-body-md text-on-surface-variant mt-2 text-sm pl-4">Create a mission available to <span class="text-primary font-bold drop-shadow-[0_0_5px_rgba(227,253,255,0.5)]">ALL</span> agents.</p>
+</div>
+<form class="space-y-6">
+<!-- Input Group -->
+<div class="space-y-2">
+<label class="font-label-caps text-[10px] text-on-surface-variant tracking-widest uppercase pl-1 font-bold">MISSION TITLE</label>
+<input class="w-full terminal-input text-on-surface font-body-md p-4 rounded-lg transition-all placeholder:text-outline-variant placeholder:font-label-caps uppercase tracking-wide outline-none focus:ring-0" placeholder="ENTER TITLE..." type="text"/>
+</div>
+<!-- Textarea Group -->
+<div class="space-y-2">
+<label class="font-label-caps text-[10px] text-on-surface-variant tracking-widest uppercase pl-1 font-bold">BRIEFING</label>
+<textarea class="w-full terminal-input text-on-surface font-body-md p-4 rounded-lg transition-all placeholder:text-outline-variant placeholder:font-label-caps uppercase tracking-wide resize-y outline-none focus:ring-0" placeholder="ENTER MISSION DETAILS..." rows="5"></textarea>
+</div>
+<!-- Grid for smaller inputs -->
+<div class="grid grid-cols-2 gap-6">
+<div class="space-y-2 relative">
+<label class="font-label-caps text-[10px] text-on-surface-variant tracking-widest uppercase pl-1 font-bold">REWARD / XP</label>
+<div class="relative">
+<select class="w-full terminal-input text-on-surface font-body-md p-4 rounded-lg transition-all appearance-none uppercase outline-none focus:ring-0 cursor-pointer font-bold">
+<option>50</option>
+<option>100</option>
+<option>250</option>
+<option>500</option>
+</select>
+<div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-outline-variant">
+<span class="material-symbols-outlined">unfold_more</span>
+</div>
+</div>
+</div>
+<div class="space-y-2 relative">
+<label class="font-label-caps text-[10px] text-on-surface-variant tracking-widest uppercase pl-1 font-bold">DIFFICULTY</label>
+<div class="relative">
+<select class="w-full terminal-input text-on-surface font-body-md p-4 rounded-lg transition-all appearance-none uppercase outline-none focus:ring-0 cursor-pointer font-bold">
+<option>EASY</option>
+<option>MEDIUM</option>
+<option>HARD</option>
+<option>NIGHTMARE</option>
+</select>
+<div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-outline-variant">
+<span class="material-symbols-outlined">arrow_drop_down</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="flex gap-6 pt-8 mt-4 border-t border-[#333]">
+<button class="flex-1 bg-[#222224] border border-[#333] text-on-surface font-label-caps text-[14px] font-bold py-4 uppercase hover:border-outline transition-all duration-200 rounded-lg btn-3d" type="button">
+                                CANCEL
+                            </button>
+<button class="flex-1 bg-primary text-on-primary font-label-caps text-[14px] font-bold py-4 uppercase transition-all duration-200 rounded-lg btn-3d-primary relative overflow-hidden group shadow-[0_0_20px_rgba(0,220,230,0.3),inset_0_1px_0_rgba(255,255,255,0.8)] tracking-wide" type="submit">
+<span class="relative z-10 flex items-center justify-center gap-2 drop-shadow-sm">
+<span class="material-symbols-outlined text-[20px]">rocket_launch</span>
+                                    DEPLOY
+                                </span>
+<div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out z-0"></div>
+</button>
+</div>
+</form>
+</div>
+</div>
+</main>
+</div>
+</body></html>

@@ -1,5 +1,5 @@
 const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? 'http://127.0.0.1:8000' 
+    ? 'http://localhost:3000' 
     : 'https://urquest-api.onrender.com'; 
 
 const app = {
@@ -12,12 +12,12 @@ const app = {
         const area = document.getElementById('notification-area');
         if (!area) return;
         const toast = document.createElement('div');
-        toast.style.background = type === 'error' ? 'var(--error-color)' : 'var(--card-bg)';
-        toast.style.borderLeft = `4px solid ${type === 'error' ? '#fff' : 'var(--primary-color)'}`;
+        toast.style.background = type === 'error' ? 'var(--color-error-container)' : 'var(--color-surface-container)';
+        toast.style.borderLeft = `4px solid ${type === 'error' ? 'var(--color-error)' : 'var(--color-primary)'}`;
         toast.style.color = '#fff';
         toast.style.padding = '1rem';
         toast.style.marginBottom = '10px';
-        toast.style.fontFamily = 'var(--font-header)';
+        toast.style.fontFamily = 'var(--font-headline)';
         toast.style.boxShadow = '0 5px 15px rgba(0,0,0,0.5)';
         toast.innerText = msg;
         area.appendChild(toast);
@@ -27,14 +27,15 @@ const app = {
     request: async (endpoint, method='GET', body=null) => {
         const options = {
             method,
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include' // CRITICAL: Send cookies with every request
         };
         if (body) options.body = JSON.stringify(body);
         
         try {
             const res = await fetch(`${API_BASE_URL}${endpoint}`, options);
             const data = await res.json();
-            if (!res.ok) throw new Error(data.detail || 'API Error');
+            if (!res.ok) throw new Error(data.detail || data.message || 'API Error');
             return data;
         } catch (err) {
             app.showToast(err.message, 'error');
@@ -42,45 +43,92 @@ const app = {
         }
     },
 
-    // --- AUTH ---
+    // --- AUTH (Cookie-based, Hangout-style) ---
+    currentRole: 'user',
+    setRole: (role) => {
+        app.currentRole = role;
+    },
+
     login: async () => {
-        const u = document.getElementById('username').value;
+        const email = document.getElementById('email').value;
         const p = document.getElementById('password').value;
-        if(!u || !p) return app.showToast('ENTER CREDENTIALS', 'error');
+        const rememberMe = document.getElementById('remember-me')?.checked || false;
+        if(!email || !p) return app.showToast('ENTER CREDENTIALS', 'error');
 
         try {
-            const res = await app.request('/auth/login', 'POST', { username: u, password: p });
-            localStorage.setItem('urquest_session', JSON.stringify(res)); 
+            const res = await app.request('/api/auth/login', 'POST', { email, password: p, rememberMe });
+            // Server sets httpOnly cookie — no localStorage needed
             app.showToast('ACCESS GRANTED');
-            setTimeout(() => window.location.href = 'user-dashboard.html', 1000);
+            setTimeout(() => {
+                if (app.currentRole === 'org') {
+                    window.location.href = 'org-dashboard.html';
+                } else {
+                    window.location.href = 'user-dashboard.html';
+                }
+            }, 1000);
         } catch (e) {}
     },
 
     register: async () => {
-        const u = document.getElementById('username').value;
-        const p = document.getElementById('password').value;
-        if(!u || !p) return app.showToast('ENTER CREDENTIALS', 'error');
+        const username = document.getElementById('username').value;
+        const email = document.getElementById('reg-email').value;
+        const p = document.getElementById('reg-password').value;
+        if(!username || !email || !p) return app.showToast('ALL FIELDS REQUIRED', 'error');
 
         try {
-            await app.request('/auth/register', 'POST', { username: u, password: p });
+            await app.request('/api/auth/register', 'POST', { username, email, password: p });
             app.showToast('REGISTRATION SUCCESS. PLEASE LOGIN.');
+            // Switch to login view
+            app.showLoginForm();
         } catch (e) {}
     },
 
-    logout: () => {
-        localStorage.removeItem('urquest_session');
+    handleGoogleLogin: () => {
+        window.location.href = `${API_BASE_URL}/auth/google`;
+    },
+
+    logout: async () => {
+        try {
+            await app.request('/api/auth/logout', 'POST');
+        } catch (e) {}
         window.location.href = 'index.html';
     },
 
-    getSession: () => {
-        const sess = localStorage.getItem('urquest_session');
-        if (!sess) return null;
-        return JSON.parse(sess);
+    // Fetch session from server (replaces localStorage getSession)
+    getSession: async () => {
+        try {
+            const data = await app.request('/api/auth/me');
+            if (data.success) {
+                return data;
+            }
+            return null;
+        } catch (e) {
+            return null;
+        }
+    },
+
+    // Toggle between login and register forms on index.html
+    showLoginForm: () => {
+        const loginUI = document.getElementById('login-ui');
+        const registerUI = document.getElementById('register-ui');
+        if (loginUI) loginUI.style.display = 'block';
+        if (registerUI) registerUI.style.display = 'none';
+    },
+
+    showRegisterForm: () => {
+        const loginUI = document.getElementById('login-ui');
+        const registerUI = document.getElementById('register-ui');
+        if (loginUI) loginUI.style.display = 'none';
+        if (registerUI) registerUI.style.display = 'block';
     },
 
     // --- ORG FUNCTIONS ---
     initOrg: async () => {
-        const session = app.getSession();
+        const session = await app.getSession();
+        if (!session) {
+            window.location.href = 'index.html';
+            return;
+        }
         
         if (!session.owned_org) { 
              if (!session.user.can_create_task) {
@@ -93,7 +141,11 @@ const app = {
         }
 
         app.user = session.user;
+        app.session = session;
         document.getElementById('org-name-display').innerText = app.org.name.toUpperCase();
+        
+        const sidebarOrgName = document.getElementById('sidebar-org-name');
+        if (sidebarOrgName) sidebarOrgName.innerText = app.org.name.toUpperCase();
         
         app.loadOrgStats();
         
@@ -127,18 +179,17 @@ const app = {
 
     loadOrgStats: async () => {
         try {
-            const stats = await app.request(`/org/stats?org_id=${app.org.org_id}`);
+            const stats = await app.request(`/api/org/stats?org_id=${app.org.org_id}`);
             document.getElementById('stat-active-tasks').innerText = stats.active_tasks;
             document.getElementById('stat-pending-reviews').innerText = stats.pending_submissions;
         } catch (e) {}
     },
 
     loadOrgMembersForAssignAndCreate: async () => {
-        // Load members into the multi-select box
         const select = document.getElementById('task-assignees');
         if(!select) return;
         try {
-            const members = await app.request(`/org/members?org_id=${app.org.org_id}`);
+            const members = await app.request(`/api/org/members?org_id=${app.org.org_id}`);
             select.innerHTML = '';
             members.forEach(m => {
                 const opt = document.createElement('option');
@@ -161,7 +212,6 @@ const app = {
         }
 
         const data = {
-            user_id: app.user.user_id,
             org_id: app.org.org_id,
             title: document.getElementById('task-title').value,
             description: document.getElementById('task-desc').value,
@@ -172,7 +222,7 @@ const app = {
             assignee_ids: assigneeIds
         };
         try {
-            await app.request('/tasks/create', 'POST', data);
+            await app.request('/api/tasks/create', 'POST', data);
             app.showToast('TASK DEPLOYED SUCCESSFULLY');
             document.getElementById('create-task-form').reset();
             app.switchOrgTab('dashboard');
@@ -183,7 +233,7 @@ const app = {
         const container = document.getElementById('reviews-list');
         container.innerHTML = '<div style="text-align:center">SCANNING...</div>';
         try {
-            const reviews = await app.request(`/org/reviews?org_id=${app.org.org_id}`);
+            const reviews = await app.request(`/api/org/reviews?org_id=${app.org.org_id}`);
             container.innerHTML = '';
             if (reviews.length === 0) {
                 container.innerHTML = '<div style="text-align:center; color:#555;">NO PENDING TRANSMISSIONS</div>';
@@ -191,23 +241,26 @@ const app = {
             }
             reviews.forEach(sub => {
                 const card = document.createElement('div');
-                card.className = 'cyber-card';
+                card.className = 'glass-panel';
+                card.style.padding = 'var(--margin-mobile)';
+                card.style.marginBottom = '16px';
+                card.style.borderRadius = '12px';
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:start;">
                         <div>
-                            <h3 style="color:#fff; margin-bottom:5px;">${sub.task_title}</h3>
-                            <div style="color:var(--primary-color)">AGENT: ${sub.student_name}</div>
+                            <h3 style="color:var(--color-on-surface); margin-bottom:5px; font-family:var(--font-headline); font-size:18px;">${sub.task_title}</h3>
+                            <div style="color:var(--color-primary); font-family:var(--font-body); font-size:14px;">AGENT: ${sub.student_name}</div>
                             <div style="margin:10px 0;">
-                                <a href="${sub.proof_link}" target="_blank" style="color:var(--accent-color);">[VIEW PROOF DATA]</a>
+                                <a href="${sub.proof_link}" target="_blank" style="color:var(--color-secondary); font-family:var(--font-label); font-size:12px;">[VIEW PROOF DATA]</a>
                             </div>
                         </div>
                         <div style="text-align:right">
-                            <div class="badge Hard">+${sub.xp_reward} XP</div>
+                            <div class="difficulty-badge Hard">+${sub.xp_reward} XP</div>
                         </div>
                     </div>
                     <div style="margin-top:1rem; display:flex; gap:10px;">
-                        <button class="cyber-btn" onclick="app.submitReview(${sub.submission_id}, 'APPROVE')">APPROVE</button>
-                        <button class="cyber-btn danger" onclick="app.submitReview(${sub.submission_id}, 'REJECT')">REJECT</button>
+                        <button class="btn-3d-primary" style="flex:1" onclick="app.submitReview(${sub.submission_id}, 'APPROVE')">APPROVE</button>
+                        <button class="btn-danger" style="flex:1" onclick="app.submitReview(${sub.submission_id}, 'REJECT')">REJECT</button>
                     </div>
                 `;
                 container.appendChild(card);
@@ -217,7 +270,7 @@ const app = {
 
     submitReview: async (id, action) => {
         try {
-            await app.request('/submissions/review', 'POST', {
+            await app.request('/api/submissions/review', 'POST', {
                 submission_id: id,
                 action: action,
                 feedback: action === 'APPROVE' ? 'Excellent work' : 'Insufficient data'
@@ -232,14 +285,13 @@ const app = {
     handleCreateRole: async (e) => {
         e.preventDefault();
         try {
-            await app.request('/org/roles/create', 'POST', {
-                owner_user_id: app.user.user_id,
+            await app.request('/api/org/roles/create', 'POST', {
                 org_id: app.org.org_id,
                 name: document.getElementById('role-name').value,
                 rank: parseInt(document.getElementById('role-rank').value),
                 can_create_task: document.getElementById('role-perm-create').checked
             });
-            app.showToast('ROLE DEFINTION CREATED');
+            app.showToast('ROLE DEFINITION CREATED');
             document.getElementById('create-role-form').reset();
             app.loadRoles();
         } catch(e) {}
@@ -248,7 +300,7 @@ const app = {
     loadRoles: async () => {
         const el = document.getElementById('roles-list-display');
         try {
-            const roles = await app.request(`/org/roles?org_id=${app.org.org_id}`);
+            const roles = await app.request(`/api/org/roles?org_id=${app.org.org_id}`);
             el.innerHTML = roles.map(r => `
                 <div style="border-bottom:1px solid #333; padding:5px; display:flex; justify-content:space-between;">
                     <span style="color:${r.can_create_task ? 'var(--primary-color)' : '#fff'}">${r.name} (Lvl ${r.rank})</span>
@@ -261,8 +313,8 @@ const app = {
     loadMembers: async () => {
         const tbody = document.getElementById('members-table-body');
         try {
-            const members = await app.request(`/org/members?org_id=${app.org.org_id}`);
-            const roles = await app.request(`/org/roles?org_id=${app.org.org_id}`);
+            const members = await app.request(`/api/org/members?org_id=${app.org.org_id}`);
+            const roles = await app.request(`/api/org/roles?org_id=${app.org.org_id}`);
             
             tbody.innerHTML = members.map(m => `
                 <tr>
@@ -282,8 +334,7 @@ const app = {
     assignRole: async (targetId, roleId) => {
         if(!roleId) return;
         try {
-            await app.request('/org/roles/assign', 'POST', {
-                owner_user_id: app.user.user_id,
+            await app.request('/api/org/roles/assign', 'POST', {
                 target_user_id: targetId,
                 role_id: parseInt(roleId)
             });
@@ -301,21 +352,16 @@ const app = {
     handleEditOrg: async (e) => {
         e.preventDefault();
         try {
-            await app.request('/org/update', 'POST', {
+            await app.request('/api/org/update', 'POST', {
                 org_id: app.org.org_id,
-                user_id: app.user.user_id,
                 name: document.getElementById('edit-org-name').value,
                 description: document.getElementById('edit-org-desc').value,
                 image_url: document.getElementById('edit-org-img').value
             });
             app.showToast('IDENTITY UPDATED');
-            // Update local session info
             app.org.name = document.getElementById('edit-org-name').value;
             app.org.description = document.getElementById('edit-org-desc').value;
             app.org.image_url = document.getElementById('edit-org-img').value;
-             if (app.session.owned_org) app.session.owned_org = app.org;
-             // We won't update member_org deeply here but it's fine for now
-            localStorage.setItem('urquest_session', JSON.stringify(app.session));
             document.getElementById('org-name-display').innerText = app.org.name.toUpperCase();
         } catch(e) {}
     },
@@ -323,7 +369,7 @@ const app = {
     initiateTransfer: () => {
         const target = document.getElementById('transfer-target-id').value;
         if(!target) return app.showToast('TARGET AGENT ID REQUIRED', 'error');
-        app.transferTargetId = target.toLowerCase().replace(' ', '_'); 
+        app.transferTargetId = target;
         document.getElementById('transfer-modal').style.display = 'flex';
     },
     
@@ -331,8 +377,7 @@ const app = {
         const pw = document.getElementById('transfer-password').value;
         if(!pw) return app.showToast('PASSWORD REQUIRED', 'error');
         try {
-            await app.request('/org/transfer-ownership', 'POST', {
-                current_owner_id: app.user.user_id,
+            await app.request('/api/org/transfer-ownership', 'POST', {
                 password: pw,
                 new_owner_id: app.transferTargetId,
                 org_id: app.org.org_id
@@ -344,7 +389,7 @@ const app = {
 
     // --- USER FUNCTIONS ---
     initUser: async () => {
-        const session = app.getSession();
+        const session = await app.getSession();
         if (!session) {
             window.location.href = 'index.html';
             return;
@@ -356,7 +401,6 @@ const app = {
         // Populate Public Task Form Listener
         const ptForm = document.getElementById('create-public-task-form');
          if(ptForm) {
-            // Remove old listener to prevent duplicates if re-init
             const newForm = ptForm.cloneNode(true);
             ptForm.parentNode.replaceChild(newForm, ptForm);
             newForm.addEventListener('submit', app.handleCreatePublicTask);
@@ -411,16 +455,10 @@ const app = {
         if (!name) return app.showToast('NAME REQUIRED', 'error');
 
         try {
-            const res = await app.request('/org/create', 'POST', {
-                owner_user_id: app.session.user.user_id,
-                name: name
-            });
-            app.session.owned_org = { org_id: res.org_id, name: res.name };
-            app.session.member_org = { org_id: res.org_id, name: res.name };
-            localStorage.setItem('urquest_session', JSON.stringify(app.session));
+            const res = await app.request('/api/org/create', 'POST', { name });
             app.showToast('ORGANIZATION ESTABLISHED');
             document.getElementById('create-org-modal').style.display = 'none';
-            app.initUser();
+            app.initUser(); // Refresh session
         } catch (e) {}
     },
     
@@ -428,7 +466,7 @@ const app = {
         const listContainer = document.getElementById('join-org-list');
         listContainer.innerHTML = 'Scanning...';
         try {
-             const orgs = await app.request('/orgs/list');
+             const orgs = await app.request('/api/orgs/list');
              listContainer.innerHTML = '';
              if (orgs.length === 0) {
                  listContainer.innerHTML = '<div style="font-size:0.7rem;">NO FACTIONS FOUND</div>';
@@ -456,7 +494,7 @@ const app = {
     
     viewOrgProfile: async (orgId) => {
         try {
-            const org = await app.request(`/org/public/${orgId}`);
+            const org = await app.request(`/api/org/public/${orgId}`);
             document.getElementById('org-profile-name').innerText = org.name;
             document.getElementById('org-profile-desc').innerText = org.description || 'No information available.';
             document.getElementById('org-profile-count').innerText = org.member_count;
@@ -469,51 +507,59 @@ const app = {
 
     joinOrg: async (orgId) => {
         try {
-            const res = await app.request('/org/join', 'POST', {
-                user_id: app.session.user.user_id,
-                org_id: orgId
-            });
-            app.session.member_org = { org_id: orgId, name: res.org_name };
-            localStorage.setItem('urquest_session', JSON.stringify(app.session));
+            const res = await app.request('/api/org/join', 'POST', { org_id: orgId });
             app.showToast(`JOINED ${res.org_name}`);
             document.getElementById('org-profile-modal').style.display = 'none';
-            app.initUser(); 
+            app.initUser(); // Refresh session
         } catch(e) {}
     },
 
     leaveOrg: async () => {
         if(!confirm("WARNING: DISAVOWING FACTION WILL RESET YOUR RANK AND ACCESS. PROCEED?")) return;
         try {
-            await app.request('/org/leave', 'POST', {
-                user_id: app.session.user.user_id,
+            await app.request('/api/org/leave', 'POST', {
                 org_id: app.session.member_org.org_id
             });
-            app.session.member_org = null;
-            app.session.user.role_name = null;
-            app.session.user.can_create_task = false; 
-            localStorage.setItem('urquest_session', JSON.stringify(app.session));
             app.showToast('FACTION DISAVOWED');
-            app.initUser(); 
+            app.initUser(); // Refresh session
         } catch(e) {}
     },
 
     loadUserProfile: async () => {
         try {
-            const profile = await app.request(`/user/profile?user_id=${app.session.user.user_id}`);
+            const profile = await app.request(`/api/user/profile?user_id=${app.session.user.user_id}`);
             document.getElementById('user-level').innerText = `LVL ${profile.level}`;
             document.getElementById('user-xp').innerText = `${profile.total_xp} XP`;
             document.getElementById('user-rank-display').innerText = `#${profile.rank}`;
+            
+            const xpTotalDisplay = document.getElementById('xp-total-display');
+            if (xpTotalDisplay) xpTotalDisplay.innerText = `TOTAL XP: ${profile.total_xp}`;
+            
+            const nextLevelXp = profile.level * 100;
+            const xpNextDisplay = document.getElementById('xp-next-display');
+            if (xpNextDisplay) xpNextDisplay.innerText = `NEXT RANK: ${nextLevelXp}`;
+            
+            const xpBarFill = document.getElementById('xp-bar-fill');
+            if (xpBarFill) xpBarFill.style.width = `${Math.min((profile.total_xp / nextLevelXp) * 100, 100)}%`;
+            
+            const statMissions = document.getElementById('stat-missions');
+            if (statMissions) statMissions.innerText = profile.completed_missions || 0;
+            
+            const statStreak = document.getElementById('stat-streak');
+            if (statStreak) statStreak.innerText = `${profile.streak || 1} DAYS`;
             
             const histList = document.getElementById('history-list');
             histList.innerHTML = '';
             profile.history.forEach(h => {
                 const item = document.createElement('div');
-                item.className = 'cyber-card';
-                item.style.padding = '10px';
+                item.className = 'glass-panel';
+                item.style.padding = '12px 16px';
+                item.style.marginBottom = '8px';
+                item.style.borderRadius = '8px';
                 item.innerHTML = `
-                    <div style="display:flex; justify-content:space-between;">
-                        <span>${h.title}</span>
-                        <span class="status-${h.status}">${h.status}</span>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-family:var(--font-body); font-size:14px;">${h.title}</span>
+                        <span class="difficulty-badge ${h.status === 'APPROVED' ? 'Easy' : (h.status === 'REJECTED' ? 'Hard' : 'Medium')}" style="font-size:10px;">${h.status}</span>
                     </div>
                 `;
                 histList.appendChild(item);
@@ -536,7 +582,6 @@ const app = {
     handleCreatePublicTask: async (e) => {
         e.preventDefault();
         const data = {
-            user_id: app.session.user.user_id,
             org_id: null,
             title: document.getElementById('ptask-title').value,
             description: document.getElementById('ptask-desc').value,
@@ -547,7 +592,7 @@ const app = {
             assignee_ids: []
         };
         try {
-            await app.request('/tasks/create', 'POST', data);
+            await app.request('/api/tasks/create', 'POST', data);
             app.showToast('PUBLIC OPERATION DEPLOYED');
             document.getElementById('create-public-task-modal').style.display = 'none';
             document.getElementById('create-public-task-form').reset();
@@ -559,44 +604,50 @@ const app = {
         const grid = document.getElementById('quest-grid');
         grid.innerHTML = 'LOADING...';
         try {
-            const tasks = await app.request(`/tasks/available?user_id=${app.session.user.user_id}`);
+            const tasks = await app.request(`/api/tasks/available`);
             grid.innerHTML = '';
             if (tasks.length === 0) {
                 grid.innerHTML = 'NO MISSIONS DETECTED.';
                 return;
             }
             tasks.forEach(task => {
-                // Determine Badge Logic
                 let badge = '';
                 let badgeClass = 'badge';
                 
                 if (task.visibility === 'PRIVATE') {
                     badge = 'CONFIDENTIAL';
-                    badgeClass = 'badge Hard'; // Red
+                    badgeClass = 'badge Hard';
                 } else if (task.org_name) {
                     badge = 'FACTION OP';
-                    badgeClass = 'badge Medium'; // Orange
+                    badgeClass = 'badge Medium';
                 } else {
                     badge = 'PUBLIC BOUNTY';
-                    badgeClass = 'badge Easy'; // Green
+                    badgeClass = 'badge Easy';
                 }
 
                 const card = document.createElement('div');
-                card.className = 'cyber-card';
+                card.className = 'quest-card';
                 card.innerHTML = `
-                    <div style="display:flex; justify-content:space-between;">
-                        <span class="${badgeClass}">${badge}</span>
-                        <span style="color:var(--primary-color)">${task.xp_reward} XP</span>
+                    <div class="quest-header">
+                        <div class="quest-icon">
+                            <span class="material-symbols-outlined">data_object</span>
+                        </div>
+                        <div class="quest-meta">
+                            <span class="difficulty-badge ${task.difficulty || 'Medium'}">[LEVEL: ${task.difficulty ? task.difficulty.toUpperCase() : 'UNKNOWN'}]</span>
+                            <span class="quest-xp">+${task.xp_reward} XP</span>
+                        </div>
                     </div>
-                    <div style="font-size:0.7rem; color:#888; margin-top:5px;">
+                    <h3 class="quest-title">${task.title}</h3>
+                    <div style="font-size:12px; color:var(--color-outline-variant); margin-top:4px; font-family:var(--font-label); letter-spacing:0.1em;">
                         ${task.org_name ? task.org_name.toUpperCase() : 'FREELANCE'} // ${task.creator_name || 'UNKNOWN'}
                     </div>
-                    <h3 style="margin:5px 0; color:#fff;">${task.title}</h3>
-                    <p style="color:#aaa; font-size:0.9rem; margin-bottom:1rem;">${task.description}</p>
+                    <p class="quest-desc" style="margin-top:12px;">${task.description}</p>
                     
-                    ${task.visibility === 'PRIVATE' ? '<div style="font-size:0.6rem; color:var(--error-color); margin-bottom:10px;">[CLASSIFIED ACCESS ONLY]</div>' : ''}
+                    ${task.visibility === 'PRIVATE' ? '<div style="font-size:10px; color:var(--color-error); margin-bottom:12px; font-family:var(--font-label);">[CLASSIFIED ACCESS ONLY]</div>' : '<div style="height:12px;"></div>'}
                     
-                    <button class="cyber-btn" style="width:100%" onclick="app.openSubmitModal(${task.task_id})">ACCEPT & SUBMIT</button>
+                    <div class="quest-footer">
+                        <button class="btn-ghost" style="width:100%; border-color:var(--color-outline-variant); color:var(--color-on-surface);" onclick="app.openSubmitModal(${task.task_id})">ACCEPT & SUBMIT</button>
+                    </div>
                 `;
                 grid.appendChild(card);
             });
@@ -614,9 +665,8 @@ const app = {
         if (!proof) return app.showToast('PROOF LINK REQUIRED', 'error');
 
         try {
-            await app.request('/tasks/submit', 'POST', {
+            await app.request('/api/tasks/submit', 'POST', {
                 task_id: parseInt(taskId),
-                user_id: app.session.user.user_id,
                 proof_link: proof
             });
             app.showToast('MISSION DATA UPLOADED');
@@ -628,14 +678,14 @@ const app = {
         const tbody = document.getElementById('leaderboard-body');
         tbody.innerHTML = '<tr><td>Scanning...</td></tr>';
         try {
-            const data = await app.request('/leaderboard');
+            const data = await app.request('/api/leaderboard');
             tbody.innerHTML = '';
             data.forEach((u, i) => {
                 const row = `
-                    <tr style="border-bottom:1px solid #222;">
-                        <td style="color:${i===0?'#ffd700':i===1?'#c0c0c0':i===2?'#cd7f32':'#888'}">#${i+1}</td>
-                        <td style="font-weight:bold; color:#fff;">${u.username}</td>
-                        <td style="color:var(--primary-color)">${u.total_xp} XP</td>
+                    <tr style="border-bottom:1px solid var(--color-surface-container-high);">
+                        <td style="color:${i===0?'var(--color-primary)':i===1?'var(--color-primary-fixed-dim)':i===2?'var(--color-outline)':'var(--color-outline-variant)'}; padding:12px 0;">#${i+1}</td>
+                        <td style="font-family:var(--font-headline); font-weight:600; color:var(--color-on-surface); padding:12px 0;">${u.username}</td>
+                        <td style="color:var(--color-tertiary-container); font-family:var(--font-stat); padding:12px 0;">${u.total_xp} XP</td>
                     </tr>
                 `;
                 tbody.innerHTML += row;

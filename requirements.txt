@@ -1,2 +1,8 @@
 fastapi
 uvicorn
+sqlalchemy
+psycopg2
+PyJWT
+passlib[bcrypt]
+httpx
+python-dotenv
