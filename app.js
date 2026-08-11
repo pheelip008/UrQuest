@@ -1,11 +1,13 @@
 const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? 'http://localhost:3000' 
+    ? window.location.origin 
     : 'https://urquest-api.onrender.com'; 
 
 const app = {
     user: null, 
     session: null,
     org: null,
+    notificationInterval: null,
+    activeFilters: {},
 
     // --- UTILS ---
     showToast: (msg, type='success') => {
@@ -19,6 +21,8 @@ const app = {
         toast.style.marginBottom = '10px';
         toast.style.fontFamily = 'var(--font-headline)';
         toast.style.boxShadow = '0 5px 15px rgba(0,0,0,0.5)';
+        toast.style.borderRadius = '8px';
+        toast.style.animation = 'fadeIn 0.3s ease';
         toast.innerText = msg;
         area.appendChild(toast);
         setTimeout(() => toast.remove(), 3000);
@@ -28,7 +32,7 @@ const app = {
         const options = {
             method,
             headers: { 'Content-Type': 'application/json' },
-            credentials: 'include' // CRITICAL: Send cookies with every request
+            credentials: 'include'
         };
         if (body) options.body = JSON.stringify(body);
         
@@ -43,7 +47,7 @@ const app = {
         }
     },
 
-    // --- AUTH (Cookie-based, Hangout-style) ---
+    // --- AUTH ---
     currentRole: 'user',
     setRole: (role) => {
         app.currentRole = role;
@@ -57,7 +61,6 @@ const app = {
 
         try {
             const res = await app.request('/api/auth/login', 'POST', { email, password: p, rememberMe });
-            // Server sets httpOnly cookie — no localStorage needed
             app.showToast('ACCESS GRANTED');
             setTimeout(() => {
                 if (app.currentRole === 'org') {
@@ -78,7 +81,6 @@ const app = {
         try {
             await app.request('/api/auth/register', 'POST', { username, email, password: p });
             app.showToast('REGISTRATION SUCCESS. PLEASE LOGIN.');
-            // Switch to login view
             app.showLoginForm();
         } catch (e) {}
     },
@@ -88,26 +90,23 @@ const app = {
     },
 
     logout: async () => {
+        if (app.notificationInterval) clearInterval(app.notificationInterval);
         try {
             await app.request('/api/auth/logout', 'POST');
         } catch (e) {}
         window.location.href = 'index.html';
     },
 
-    // Fetch session from server (replaces localStorage getSession)
     getSession: async () => {
         try {
             const data = await app.request('/api/auth/me');
-            if (data.success) {
-                return data;
-            }
+            if (data.success) return data;
             return null;
         } catch (e) {
             return null;
         }
     },
 
-    // Toggle between login and register forms on index.html
     showLoginForm: () => {
         const loginUI = document.getElementById('login-ui');
         const registerUI = document.getElementById('register-ui');
@@ -122,8 +121,276 @@ const app = {
         if (registerUI) registerUI.style.display = 'block';
     },
 
+    // --- THEME TOGGLE ---
+    toggleTheme: () => {
+        const html = document.documentElement;
+        const isLight = html.classList.toggle('light-theme');
+        localStorage.setItem('urquest-theme', isLight ? 'light' : 'dark');
+        const icon = document.getElementById('theme-toggle-icon');
+        if (icon) icon.innerText = isLight ? 'dark_mode' : 'light_mode';
+    },
+
+    initTheme: () => {
+        const saved = localStorage.getItem('urquest-theme');
+        if (saved === 'light') {
+            document.documentElement.classList.add('light-theme');
+            const icon = document.getElementById('theme-toggle-icon');
+            if (icon) icon.innerText = 'dark_mode';
+        }
+    },
+
+    // --- NOTIFICATIONS ---
+    initNotifications: () => {
+        app.pollNotifications();
+        app.notificationInterval = setInterval(app.pollNotifications, 30000);
+    },
+
+    pollNotifications: async () => {
+        try {
+            const data = await app.request('/api/notifications/count');
+            const badge = document.getElementById('notif-badge');
+            if (badge) {
+                if (data.count > 0) {
+                    badge.style.display = 'flex';
+                    badge.innerText = data.count > 9 ? '9+' : data.count;
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        } catch (e) {}
+    },
+
+    toggleNotifDropdown: async () => {
+        const dropdown = document.getElementById('notif-dropdown');
+        if (!dropdown) return;
+        
+        const isVisible = dropdown.style.display === 'block';
+        dropdown.style.display = isVisible ? 'none' : 'block';
+        
+        if (!isVisible) {
+            try {
+                const notes = await app.request('/api/notifications');
+                const list = document.getElementById('notif-list');
+                if (notes.length === 0) {
+                    list.innerHTML = '<div style="padding:16px; text-align:center; color:var(--color-outline-variant); font-size:12px; font-family:var(--font-label);">NO TRANSMISSIONS</div>';
+                } else {
+                    list.innerHTML = notes.map(n => `
+                        <div style="padding:12px 16px; border-bottom:1px solid var(--color-surface-container-high); ${n.is_read ? 'opacity:0.6;' : ''}">
+                            <div style="font-family:var(--font-body); font-size:13px; color:var(--color-on-surface); line-height:1.4;">${n.message}</div>
+                            <div style="font-family:var(--font-label); font-size:10px; color:var(--color-outline-variant); margin-top:4px; letter-spacing:0.1em;">${new Date(n.created_at).toLocaleString()}</div>
+                        </div>
+                    `).join('');
+                }
+                await app.request('/api/notifications/read', 'POST');
+                app.pollNotifications();
+            } catch (e) {}
+        }
+    },
+
+    // --- SEARCH ---
+    initSearch: () => {
+        const input = document.getElementById('search-input');
+        if (!input) return;
+        
+        let debounceTimer;
+        input.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => app.performSearch(input.value), 300);
+        });
+        
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('search-dropdown');
+            const searchWrap = document.getElementById('search-wrap');
+            if (dropdown && searchWrap && !searchWrap.contains(e.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
+    },
+
+    performSearch: async (query) => {
+        const dropdown = document.getElementById('search-dropdown');
+        if (!dropdown) return;
+        
+        if (query.length < 2) {
+            dropdown.style.display = 'none';
+            return;
+        }
+        
+        try {
+            const results = await app.request(`/api/search?q=${encodeURIComponent(query)}`);
+            let html = '';
+            
+            if (results.quests.length > 0) {
+                html += '<div style="padding:8px 16px; font-family:var(--font-label); font-size:10px; color:var(--color-primary); letter-spacing:0.1em;">QUESTS</div>';
+                results.quests.forEach(q => {
+                    html += `<a href="#" onclick="app.switchUserTab('quests'); document.getElementById('search-dropdown').style.display='none'; return false;" style="display:block; padding:10px 16px; color:var(--color-on-surface); font-size:13px; text-decoration:none; border-bottom:1px solid var(--color-surface-container-high);">
+                        <span class="material-symbols-outlined" style="font-size:14px; vertical-align:middle; margin-right:6px;">data_object</span>
+                        ${q.title} <span style="color:var(--color-primary-fixed-dim); font-size:11px;">+${q.xp_reward} XP</span>
+                    </a>`;
+                });
+            }
+            
+            if (results.orgs.length > 0) {
+                html += '<div style="padding:8px 16px; font-family:var(--font-label); font-size:10px; color:var(--color-secondary); letter-spacing:0.1em;">ORGANIZATIONS</div>';
+                results.orgs.forEach(o => {
+                    html += `<a href="#" onclick="app.viewOrgProfile(${o.org_id}); document.getElementById('search-dropdown').style.display='none'; return false;" style="display:block; padding:10px 16px; color:var(--color-on-surface); font-size:13px; text-decoration:none; border-bottom:1px solid var(--color-surface-container-high);">
+                        <span class="material-symbols-outlined" style="font-size:14px; vertical-align:middle; margin-right:6px;">group</span>
+                        ${o.name}
+                    </a>`;
+                });
+            }
+            
+            if (results.users.length > 0) {
+                html += '<div style="padding:8px 16px; font-family:var(--font-label); font-size:10px; color:var(--color-tertiary-container); letter-spacing:0.1em;">AGENTS</div>';
+                results.users.forEach(u => {
+                    html += `<a href="profile.html?id=${u.user_id}" style="display:block; padding:10px 16px; color:var(--color-on-surface); font-size:13px; text-decoration:none; border-bottom:1px solid var(--color-surface-container-high);">
+                        <span class="material-symbols-outlined" style="font-size:14px; vertical-align:middle; margin-right:6px;">person</span>
+                        ${u.username} <span style="color:var(--color-outline-variant); font-size:11px;">${u.total_xp} XP</span>
+                    </a>`;
+                });
+            }
+            
+            if (html === '') {
+                html = '<div style="padding:16px; text-align:center; color:var(--color-outline-variant); font-size:12px;">NO RESULTS FOUND</div>';
+            }
+            
+            dropdown.innerHTML = html;
+            dropdown.style.display = 'block';
+        } catch (e) {}
+    },
+
+    // --- SETTINGS MODAL ---
+    openSettings: () => {
+        document.getElementById('settings-modal').style.display = 'flex';
+        const usernameInput = document.getElementById('settings-username');
+        const bioInput = document.getElementById('settings-bio');
+        if (usernameInput && app.session) usernameInput.value = app.session.user.username;
+        if (bioInput) bioInput.value = '';
+    },
+
+    saveProfile: async () => {
+        const username = document.getElementById('settings-username')?.value;
+        const bio = document.getElementById('settings-bio')?.value;
+        try {
+            await app.request('/api/user/update-profile', 'PUT', { username, bio });
+            app.showToast('PROFILE UPDATED');
+            if (app.session) app.session.user.username = username;
+            const display = document.getElementById('username-display');
+            if (display) display.innerText = username.toUpperCase();
+        } catch (e) {}
+    },
+
+    changePassword: async () => {
+        const current = document.getElementById('settings-current-pw')?.value;
+        const newPw = document.getElementById('settings-new-pw')?.value;
+        if (!current || !newPw) return app.showToast('FILL ALL FIELDS', 'error');
+        if (newPw.length < 6) return app.showToast('PASSWORD TOO SHORT (MIN 6)', 'error');
+        try {
+            await app.request('/api/user/change-password', 'PUT', { current_password: current, new_password: newPw });
+            app.showToast('ACCESS CODE CHANGED');
+            document.getElementById('settings-current-pw').value = '';
+            document.getElementById('settings-new-pw').value = '';
+        } catch (e) {}
+    },
+
+    // --- FILTER DRAWER ---
+    toggleFilterDrawer: () => {
+        const drawer = document.getElementById('filter-drawer');
+        if (!drawer) return;
+        drawer.style.display = drawer.style.display === 'none' ? 'block' : 'none';
+    },
+
+    applyFilters: () => {
+        const difficulty = document.getElementById('filter-difficulty')?.value || '';
+        const category = document.getElementById('filter-category')?.value || '';
+        const minXp = document.getElementById('filter-min-xp')?.value || '';
+        const maxXp = document.getElementById('filter-max-xp')?.value || '';
+        const sortBy = document.getElementById('filter-sort')?.value || '';
+        
+        app.activeFilters = {};
+        if (difficulty) app.activeFilters.difficulty = difficulty;
+        if (category) app.activeFilters.category = category;
+        if (minXp) app.activeFilters.min_xp = minXp;
+        if (maxXp) app.activeFilters.max_xp = maxXp;
+        if (sortBy) app.activeFilters.sort_by = sortBy;
+        
+        app.loadAvailableTasks();
+        app.toggleFilterDrawer();
+    },
+
+    clearFilters: () => {
+        app.activeFilters = {};
+        const ids = ['filter-difficulty', 'filter-category', 'filter-min-xp', 'filter-max-xp', 'filter-sort'];
+        ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        app.loadAvailableTasks();
+        app.toggleFilterDrawer();
+    },
+
+    // --- DEADLINE COUNTDOWN ---
+    getCountdown: (deadlineStr) => {
+        if (!deadlineStr) return null;
+        const deadline = new Date(deadlineStr);
+        const now = new Date();
+        const diff = deadline - now;
+        if (diff <= 0) return 'EXPIRED';
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        if (days > 0) return `${days}D ${hours}H`;
+        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        return `${hours}H ${mins}M`;
+    },
+
+    // --- COMMENTS ---
+    toggleComments: async (taskId) => {
+        const container = document.getElementById(`comments-${taskId}`);
+        if (!container) return;
+        
+        if (container.style.display === 'block') {
+            container.style.display = 'none';
+            return;
+        }
+        
+        container.style.display = 'block';
+        container.innerHTML = '<div style="text-align:center; color:var(--color-outline-variant); font-size:11px; padding:8px;">LOADING...</div>';
+        
+        try {
+            const comments = await app.request(`/api/tasks/${taskId}/comments`);
+            let html = '';
+            if (comments.length > 0) {
+                html = comments.map(c => `
+                    <div style="padding:8px 0; border-bottom:1px solid var(--color-surface-container-high);">
+                        <span style="color:var(--color-primary); font-family:var(--font-label); font-size:11px; font-weight:700;">${c.user}</span>
+                        <span style="color:var(--color-outline-variant); font-size:10px; margin-left:8px;">${new Date(c.created_at).toLocaleString()}</span>
+                        <div style="color:var(--color-on-surface); font-size:13px; margin-top:4px; line-height:1.4;">${c.content}</div>
+                    </div>
+                `).join('');
+            } else {
+                html = '<div style="color:var(--color-outline-variant); font-size:11px; padding:4px 0;">NO COMMENTS YET</div>';
+            }
+            html += `
+                <div style="display:flex; gap:8px; margin-top:10px;">
+                    <input type="text" id="comment-input-${taskId}" class="cyber-input" placeholder="ADD COMMENT..." style="flex:1; padding:8px 12px; font-size:12px;">
+                    <button class="btn-3d-primary" onclick="app.addComment(${taskId})" style="padding:8px 16px; font-size:11px;">SEND</button>
+                </div>
+            `;
+            container.innerHTML = html;
+        } catch (e) {}
+    },
+
+    addComment: async (taskId) => {
+        const input = document.getElementById(`comment-input-${taskId}`);
+        if (!input || !input.value.trim()) return app.showToast('EMPTY COMMENT', 'error');
+        try {
+            await app.request(`/api/tasks/${taskId}/comments`, 'POST', { content: input.value.trim() });
+            app.showToast('COMMENT POSTED');
+            app.toggleComments(taskId);
+            app.toggleComments(taskId);
+        } catch (e) {}
+    },
+
     // --- ORG FUNCTIONS ---
     initOrg: async () => {
+        app.initTheme();
         const session = await app.getSession();
         if (!session) {
             window.location.href = 'index.html';
@@ -148,6 +415,8 @@ const app = {
         if (sidebarOrgName) sidebarOrgName.innerText = app.org.name.toUpperCase();
         
         app.loadOrgStats();
+        app.initNotifications();
+        app.initSearch();
         
         const createTaskForm = document.getElementById('create-task-form');
         if(createTaskForm) createTaskForm.addEventListener('submit', app.handleCreateOrgTask);
@@ -160,7 +429,7 @@ const app = {
     },
 
     switchOrgTab: (tab) => {
-        ['dashboard', 'create', 'reviews', 'settings'].forEach(t => {
+        ['dashboard', 'create', 'reviews', 'settings', 'analytics'].forEach(t => {
             const el = document.getElementById(`view-${t}`);
              if(el) el.style.display = 'none';
         });
@@ -174,7 +443,9 @@ const app = {
             app.loadRoles();
             app.loadMembers();
             app.populateOrgEditForm();
+            app.loadInvites();
         }
+        if (tab === 'analytics') app.loadOrgAnalytics();
     },
 
     loadOrgStats: async () => {
@@ -217,6 +488,7 @@ const app = {
             description: document.getElementById('task-desc').value,
             xp_reward: parseInt(document.getElementById('task-xp').value),
             difficulty: document.getElementById('task-diff').value,
+            category: document.getElementById('task-category')?.value || null,
             deadline: document.getElementById('task-deadline').value || null,
             visibility: visibility,
             assignee_ids: assigneeIds
@@ -303,7 +575,7 @@ const app = {
             const roles = await app.request(`/api/org/roles?org_id=${app.org.org_id}`);
             el.innerHTML = roles.map(r => `
                 <div style="border-bottom:1px solid #333; padding:5px; display:flex; justify-content:space-between;">
-                    <span style="color:${r.can_create_task ? 'var(--primary-color)' : '#fff'}">${r.name} (Lvl ${r.rank})</span>
+                    <span style="color:${r.can_create_task ? 'var(--color-primary)' : '#fff'}">${r.name} (Lvl ${r.rank})</span>
                     ${r.can_create_task ? '<span style="font-size:0.7rem;">[COMMAND]</span>' : ''}
                 </div>
             `).join('');
@@ -387,8 +659,70 @@ const app = {
         } catch(e) {}
     },
 
+    // --- ORG INVITES ---
+    createInvite: async () => {
+        try {
+            const res = await app.request('/api/org/invite/create', 'POST', { org_id: app.org.org_id });
+            app.showToast(`INVITE CODE: ${res.invite_code}`);
+            app.loadInvites();
+        } catch (e) {}
+    },
+
+    loadInvites: async () => {
+        const container = document.getElementById('invites-list');
+        if (!container) return;
+        try {
+            const invites = await app.request(`/api/org/invites?org_id=${app.org.org_id}`);
+            if (invites.length === 0) {
+                container.innerHTML = '<div style="color:var(--color-outline-variant); font-size:12px;">NO ACTIVE INVITES</div>';
+                return;
+            }
+            container.innerHTML = invites.map(i => `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; border-bottom:1px solid var(--color-surface-container-high);">
+                    <div>
+                        <span style="color:var(--color-primary); font-family:var(--font-body); font-size:14px; font-weight:700;">${i.invite_code}</span>
+                        <span style="color:var(--color-outline-variant); font-size:11px; margin-left:8px;">USES: ${i.uses}${i.max_uses ? '/' + i.max_uses : '/∞'}</span>
+                    </div>
+                    <button class="btn-ghost" style="padding:4px 12px; font-size:10px;" onclick="navigator.clipboard.writeText('${i.invite_code}'); app.showToast('COPIED!');">COPY</button>
+                </div>
+            `).join('');
+        } catch (e) {}
+    },
+
+    // --- ORG ANALYTICS ---
+    loadOrgAnalytics: async () => {
+        try {
+            const [analytics, leaderboard] = await Promise.all([
+                app.request(`/api/org/analytics?org_id=${app.org.org_id}`),
+                app.request(`/api/org/leaderboard?org_id=${app.org.org_id}`)
+            ]);
+            
+            const el = (id) => document.getElementById(id);
+            if (el('analytics-members')) el('analytics-members').innerText = analytics.member_count;
+            if (el('analytics-tasks')) el('analytics-tasks').innerText = analytics.total_tasks;
+            if (el('analytics-submissions')) el('analytics-submissions').innerText = analytics.total_submissions;
+            if (el('analytics-approved')) el('analytics-approved').innerText = analytics.approved;
+            if (el('analytics-rejected')) el('analytics-rejected').innerText = analytics.rejected;
+            if (el('analytics-pending')) el('analytics-pending').innerText = analytics.pending;
+            if (el('analytics-xp')) el('analytics-xp').innerText = analytics.total_xp_distributed;
+            
+            const tbody = document.getElementById('org-leaderboard-body');
+            if (tbody) {
+                tbody.innerHTML = leaderboard.map((m, i) => `
+                    <tr style="border-bottom:1px solid var(--color-surface-container-high);">
+                        <td style="color:${i===0?'var(--color-primary)':i===1?'var(--color-primary-fixed-dim)':i===2?'var(--color-outline)':'var(--color-outline-variant)'}; padding:12px 0;">#${i+1}</td>
+                        <td style="font-family:var(--font-headline); font-weight:600; color:var(--color-on-surface); padding:12px 0;">${m.username}</td>
+                        <td style="color:var(--color-outline-variant); font-size:12px; padding:12px 0;">${m.role_name || 'AGENT'}</td>
+                        <td style="color:var(--color-tertiary-container); font-family:var(--font-stat); padding:12px 0;">${m.total_xp} XP</td>
+                    </tr>
+                `).join('');
+            }
+        } catch (e) {}
+    },
+
     // --- USER FUNCTIONS ---
     initUser: async () => {
+        app.initTheme();
         const session = await app.getSession();
         if (!session) {
             window.location.href = 'index.html';
@@ -396,9 +730,9 @@ const app = {
         }
         
         app.session = session;
+        app.user = session.user;
         document.getElementById('username-display').innerText = session.user.username.toUpperCase();
         
-        // Populate Public Task Form Listener
         const ptForm = document.getElementById('create-public-task-form');
          if(ptForm) {
             const newForm = ptForm.cloneNode(true);
@@ -406,7 +740,6 @@ const app = {
             newForm.addEventListener('submit', app.handleCreatePublicTask);
         }
         
-        // Update Org UI Logic
         const memberOrg = session.member_org;
         const ownedOrg = session.owned_org;
 
@@ -444,6 +777,29 @@ const app = {
 
         await app.loadUserProfile();
         app.loadAvailableTasks();
+        app.loadBadges();
+        app.initNotifications();
+        app.initSearch();
+    },
+
+    loadBadges: async () => {
+        const container = document.getElementById('badges-container');
+        if (!container || !app.user) return;
+        try {
+            const badges = await app.request(`/api/user/badges?user_id=${app.user.user_id}`);
+            if (badges.length === 0) {
+                container.innerHTML = '<span style="color:var(--color-outline-variant); font-size:12px; font-family:var(--font-label);">NO ACQUIRED BADGES</span>';
+                return;
+            }
+            container.innerHTML = badges.map(b => `
+                <div class="badge" title="${b.description}" style="background:var(--color-surface-container-high); color:var(--color-primary); padding:6px 12px; font-size:12px; display:flex; align-items:center; gap:5px; border-radius:4px; border:1px solid var(--color-primary-fixed-dim);">
+                    <span class="material-symbols-outlined" style="font-size:16px;">${b.icon}</span>
+                    ${b.name}
+                </div>
+            `).join('');
+        } catch (e) {
+            container.innerHTML = '<span style="color:var(--color-error); font-size:12px; font-family:var(--font-label);">ERROR SCANNING</span>';
+        }
     },
 
     showCreateOrgModal: () => {
@@ -453,12 +809,11 @@ const app = {
     createOrg: async () => {
         const name = document.getElementById('new-org-name').value;
         if (!name) return app.showToast('NAME REQUIRED', 'error');
-
         try {
             const res = await app.request('/api/org/create', 'POST', { name });
             app.showToast('ORGANIZATION ESTABLISHED');
             document.getElementById('create-org-modal').style.display = 'none';
-            app.initUser(); // Refresh session
+            app.initUser();
         } catch (e) {}
     },
     
@@ -510,7 +865,7 @@ const app = {
             const res = await app.request('/api/org/join', 'POST', { org_id: orgId });
             app.showToast(`JOINED ${res.org_name}`);
             document.getElementById('org-profile-modal').style.display = 'none';
-            app.initUser(); // Refresh session
+            app.initUser();
         } catch(e) {}
     },
 
@@ -521,7 +876,7 @@ const app = {
                 org_id: app.session.member_org.org_id
             });
             app.showToast('FACTION DISAVOWED');
-            app.initUser(); // Refresh session
+            app.initUser();
         } catch(e) {}
     },
 
@@ -587,6 +942,7 @@ const app = {
             description: document.getElementById('ptask-desc').value,
             xp_reward: parseInt(document.getElementById('ptask-xp').value),
             difficulty: document.getElementById('ptask-diff').value,
+            category: document.getElementById('ptask-category')?.value || null,
             deadline: null,
             visibility: 'PUBLIC',
             assignee_ids: []
@@ -604,26 +960,18 @@ const app = {
         const grid = document.getElementById('quest-grid');
         grid.innerHTML = 'LOADING...';
         try {
-            const tasks = await app.request(`/api/tasks/available`);
+            let queryStr = '/api/tasks/available';
+            const params = new URLSearchParams(app.activeFilters);
+            if (params.toString()) queryStr += `?${params.toString()}`;
+            
+            const tasks = await app.request(queryStr);
             grid.innerHTML = '';
             if (tasks.length === 0) {
-                grid.innerHTML = 'NO MISSIONS DETECTED.';
+                grid.innerHTML = '<div style="text-align:center; color:var(--color-outline-variant); font-family:var(--font-label); padding:40px;">NO MISSIONS DETECTED.</div>';
                 return;
             }
             tasks.forEach(task => {
-                let badge = '';
-                let badgeClass = 'badge';
-                
-                if (task.visibility === 'PRIVATE') {
-                    badge = 'CONFIDENTIAL';
-                    badgeClass = 'badge Hard';
-                } else if (task.org_name) {
-                    badge = 'FACTION OP';
-                    badgeClass = 'badge Medium';
-                } else {
-                    badge = 'PUBLIC BOUNTY';
-                    badgeClass = 'badge Easy';
-                }
+                const countdown = app.getCountdown(task.deadline);
 
                 const card = document.createElement('div');
                 card.className = 'quest-card';
@@ -641,16 +989,45 @@ const app = {
                     <div style="font-size:12px; color:var(--color-outline-variant); margin-top:4px; font-family:var(--font-label); letter-spacing:0.1em;">
                         ${task.org_name ? task.org_name.toUpperCase() : 'FREELANCE'} // ${task.creator_name || 'UNKNOWN'}
                     </div>
+                    ${task.category ? `<div style="margin-top:6px;"><span style="font-size:10px; background:var(--color-surface-container-high); color:var(--color-tertiary-container); padding:2px 8px; border-radius:3px; font-family:var(--font-label); letter-spacing:0.1em;">${task.category.toUpperCase()}</span></div>` : ''}
                     <p class="quest-desc" style="margin-top:12px;">${task.description}</p>
+                    
+                    ${countdown ? `<div style="font-size:10px; font-family:var(--font-label); letter-spacing:0.1em; margin-bottom:8px; color:${countdown === 'EXPIRED' ? 'var(--color-error)' : 'var(--color-primary-fixed-dim)'};">
+                        <span class="material-symbols-outlined" style="font-size:12px; vertical-align:middle;">schedule</span> ${countdown === 'EXPIRED' ? 'DEADLINE EXPIRED' : `DEADLINE: ${countdown}`}
+                    </div>` : ''}
                     
                     ${task.visibility === 'PRIVATE' ? '<div style="font-size:10px; color:var(--color-error); margin-bottom:12px; font-family:var(--font-label);">[CLASSIFIED ACCESS ONLY]</div>' : '<div style="height:12px;"></div>'}
                     
                     <div class="quest-footer">
-                        <button class="btn-ghost" style="width:100%; border-color:var(--color-outline-variant); color:var(--color-on-surface);" onclick="app.openSubmitModal(${task.task_id})">ACCEPT & SUBMIT</button>
+                        ${task.accepted ? `
+                            <div style="width:100%; display:flex; gap:10px;">
+                                <div style="flex:1; border:1px solid var(--color-primary); color:var(--color-primary); display:flex; align-items:center; justify-content:center; font-family:var(--font-label); font-size:12px; letter-spacing:0.1em; background:rgba(0, 255, 128, 0.1);">IN PROGRESS</div>
+                                <button class="btn-ghost" style="flex:1; border-color:var(--color-primary); color:var(--color-on-surface);" onclick="app.openSubmitModal(${task.task_id})">SUBMIT PROOF</button>
+                            </div>
+                        ` : `
+                            <button class="btn-ghost" style="width:100%; border-color:var(--color-outline-variant); color:var(--color-on-surface);" onclick="app.acceptQuest(${task.task_id})">ACCEPT QUEST</button>
+                        `}
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                            <span style="font-size:10px; color:var(--color-outline-variant); font-family:var(--font-label);">
+                                ${task.acceptance_count || 0} AGENTS ACTIVE
+                            </span>
+                            <button onclick="app.toggleComments(${task.task_id})" style="background:none; border:none; cursor:pointer; color:var(--color-outline-variant); font-family:var(--font-label); font-size:10px; display:flex; align-items:center; gap:4px;">
+                                <span class="material-symbols-outlined" style="font-size:14px;">chat</span> COMMENTS
+                            </button>
+                        </div>
                     </div>
+                    <div id="comments-${task.task_id}" style="display:none; margin-top:12px; padding-top:12px; border-top:1px solid var(--color-surface-container-high);"></div>
                 `;
                 grid.appendChild(card);
             });
+        } catch (e) {}
+    },
+
+    acceptQuest: async (taskId) => {
+        try {
+            await app.request(`/api/tasks/${taskId}/accept`, 'POST');
+            app.showToast('QUEST ACCEPTED');
+            app.loadAvailableTasks();
         } catch (e) {}
     },
 
@@ -661,8 +1038,28 @@ const app = {
 
     submitProof: async () => {
         const taskId = document.getElementById('modal-task-id').value;
-        const proof = document.getElementById('proof-link').value;
-        if (!proof) return app.showToast('PROOF LINK REQUIRED', 'error');
+        let proof = document.getElementById('proof-link').value;
+        const fileInput = document.getElementById('proof-file');
+        
+        if (fileInput && fileInput.files.length > 0) {
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/upload`, {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.detail || 'Upload failed');
+                proof = data.url;
+            } catch (err) {
+                return app.showToast(err.message, 'error');
+            }
+        }
+        
+        if (!proof) return app.showToast('PROOF LINK OR FILE REQUIRED', 'error');
 
         try {
             await app.request('/api/tasks/submit', 'POST', {
@@ -671,6 +1068,8 @@ const app = {
             });
             app.showToast('MISSION DATA UPLOADED');
             document.getElementById('submission-modal').style.display = 'none';
+            document.getElementById('proof-link').value = '';
+            if (fileInput) fileInput.value = '';
         } catch (e) {}
     },
 

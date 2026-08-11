@@ -6,3 +6,4 @@ PyJWT
 passlib[bcrypt]
 httpx
 python-dotenv
+python-multipart

@@ -18,6 +18,12 @@
             <span class="brand-sub">// AGENT PROTOCOL</span>
         </div>
         <div class="bar-right">
+            <!-- Search -->
+            <div id="search-wrap" style="position:relative; margin-right:8px;">
+                <input type="text" id="search-input" class="cyber-input" placeholder="SEARCH..." style="width:200px; padding:6px 12px 6px 32px; font-size:11px; height:36px; text-transform:uppercase;">
+                <span class="material-symbols-outlined" style="position:absolute; left:8px; top:50%; transform:translateY(-50%); font-size:16px; color:var(--color-outline-variant); pointer-events:none;">search</span>
+                <div id="search-dropdown" style="display:none; position:absolute; top:100%; left:0; width:350px; max-height:400px; overflow-y:auto; background:var(--color-surface-container); border:1px solid var(--color-outline-variant); border-radius:8px; z-index:200; margin-top:4px; box-shadow:0 10px 30px rgba(0,0,0,0.8);"></div>
+            </div>
             <div class="stat-block">
                 <span class="stat-label">CURRENT LEVEL</span>
                 <span class="stat-val" id="user-level">LVL -</span>
@@ -29,11 +35,24 @@
                     <span id="user-xp">0 XP</span>
                 </span>
             </div>
-            <button class="icon-btn">
-                <span class="material-symbols-outlined">notifications</span>
-            </button>
-            <button class="icon-btn">
+            <!-- Notification Bell -->
+            <div style="position:relative;">
+                <button class="icon-btn" onclick="app.toggleNotifDropdown()">
+                    <span class="material-symbols-outlined">notifications</span>
+                    <span id="notif-badge" style="display:none; position:absolute; top:2px; right:2px; background:var(--color-error-container); color:#fff; font-size:9px; font-weight:700; width:18px; height:18px; border-radius:50%; align-items:center; justify-content:center; font-family:var(--font-label);">0</span>
+                </button>
+                <div id="notif-dropdown" style="display:none; position:absolute; right:0; top:100%; width:340px; max-height:400px; overflow-y:auto; background:var(--color-surface-container); border:1px solid var(--color-outline-variant); border-radius:8px; z-index:200; margin-top:4px; box-shadow:0 10px 30px rgba(0,0,0,0.8);">
+                    <div style="padding:12px 16px; border-bottom:1px solid var(--color-surface-container-high); font-family:var(--font-label); font-size:11px; color:var(--color-primary); letter-spacing:0.1em;">TRANSMISSIONS</div>
+                    <div id="notif-list"></div>
+                </div>
+            </div>
+            <!-- Settings -->
+            <button class="icon-btn" onclick="app.openSettings()">
                 <span class="material-symbols-outlined">settings</span>
+            </button>
+            <!-- Theme Toggle -->
+            <button class="icon-btn" onclick="app.toggleTheme()">
+                <span class="material-symbols-outlined" id="theme-toggle-icon">light_mode</span>
             </button>
             <button class="btn-3d" onclick="app.logout()" style="margin-left:16px; padding:8px 32px;">LOGOUT</button>
         </div>
@@ -124,9 +143,51 @@
                     </h1>
                     <p class="subtitle">Select an operation to begin deployment.</p>
                 </div>
-                <button class="btn-3d" style="display:flex; align-items:center; gap:8px; padding:8px 24px;">
+                <button class="btn-3d" style="display:flex; align-items:center; gap:8px; padding:8px 24px;" onclick="app.toggleFilterDrawer()">
                     <span class="material-symbols-outlined" style="font-size:16px;">filter_list</span> FILTER
                 </button>
+            </div>
+
+            <!-- Filter Drawer -->
+            <div id="filter-drawer" style="display:none; margin-bottom:24px;">
+                <div class="glass-panel" style="padding:20px; border-radius:12px;">
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:16px;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>DIFFICULTY</label>
+                            <select id="filter-difficulty" class="cyber-input" style="font-size:12px; padding:8px;">
+                                <option value="">ALL</option>
+                                <option value="Easy">EASY</option>
+                                <option value="Medium">MEDIUM</option>
+                                <option value="Hard">HARD</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>CATEGORY</label>
+                            <input type="text" id="filter-category" class="cyber-input" placeholder="E.G. CODING" style="font-size:12px; padding:8px;">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>MIN XP</label>
+                            <input type="number" id="filter-min-xp" class="cyber-input" placeholder="0" style="font-size:12px; padding:8px;">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>MAX XP</label>
+                            <input type="number" id="filter-max-xp" class="cyber-input" placeholder="9999" style="font-size:12px; padding:8px;">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>SORT BY</label>
+                            <select id="filter-sort" class="cyber-input" style="font-size:12px; padding:8px;">
+                                <option value="">NEWEST</option>
+                                <option value="xp_desc">XP: HIGH → LOW</option>
+                                <option value="xp_asc">XP: LOW → HIGH</option>
+                                <option value="deadline">DEADLINE</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:12px; margin-top:16px;">
+                        <button class="btn-3d-primary" onclick="app.applyFilters()" style="padding:8px 24px;">APPLY</button>
+                        <button class="btn-ghost" onclick="app.clearFilters()" style="padding:8px 24px;">CLEAR</button>
+                    </div>
+                </div>
             </div>
 
             <!-- Bento Grid -->
@@ -161,6 +222,13 @@
                         <div class="stat-box input-recessed accent-magenta">
                             <div class="stat-box-label">ACTIVE STREAK</div>
                             <div class="stat-box-value" id="stat-streak">0 DAYS</div>
+                        </div>
+                    </div>
+                    <!-- Badges -->
+                    <div class="glass-panel" style="padding: 16px;">
+                        <h4 style="color:var(--color-primary); font-family:var(--font-label); margin-top:0; margin-bottom:12px; letter-spacing:0.1em;">ACQUIRED BADGES</h4>
+                        <div id="badges-container" style="display:flex; flex-wrap:wrap; gap:10px;">
+                            <span style="color:var(--color-outline-variant); font-size:12px; font-family:var(--font-label);">SCANNING...</span>
                         </div>
                     </div>
                 </div>
@@ -218,8 +286,9 @@
             <h3 class="accent">SUBMIT PROOF</h3>
             <p class="modal-desc">Provide evidence of mission completion.</p>
             <input type="hidden" id="modal-task-id">
-            <input type="url" id="proof-link" class="cyber-input" placeholder="https://..." required>
-            <div class="modal-actions">
+            <input type="url" id="proof-link" class="cyber-input" placeholder="Or URL (https://...)" style="margin-bottom:10px;">
+            <input type="file" id="proof-file" class="cyber-input" accept="image/*,.pdf,.txt,.zip">
+            <div class="modal-actions" style="margin-top:15px;">
                 <button class="btn-3d-primary" onclick="app.submitProof()" style="padding:12px;">UPLOAD</button>
                 <button class="btn-danger" onclick="document.getElementById('submission-modal').style.display='none'" style="padding:12px;">CANCEL</button>
             </div>
@@ -256,6 +325,10 @@
                             <span class="material-symbols-outlined select-arrow">arrow_drop_down</span>
                         </div>
                     </div>
+                </div>
+                <div class="form-group">
+                    <label>CATEGORY (OPTIONAL)</label>
+                    <input type="text" id="ptask-category" class="cyber-input" placeholder="E.G. CODING, DESIGN, RESEARCH">
                 </div>
                 <div class="modal-actions">
                     <button type="submit" class="btn-3d-primary" style="padding:12px;">
@@ -300,6 +373,46 @@
                     <button id="org-profile-join-btn" class="btn-3d-primary" style="padding:12px;">INITIATE ALLIANCE (JOIN)</button>
                     <button class="btn-danger" onclick="document.getElementById('org-profile-modal').style.display='none'" style="padding:12px;">CLOSE</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: SETTINGS -->
+    <div id="settings-modal" class="modal-overlay" style="z-index:160;">
+        <div class="glass-panel modal-card corner-accents" style="max-width:500px;">
+            <h3 class="accent">AGENT SETTINGS</h3>
+            <p class="modal-desc">Manage your profile and security.</p>
+            
+            <!-- Profile Section -->
+            <div style="margin-bottom:20px;">
+                <div style="font-family:var(--font-label); font-size:11px; color:var(--color-primary); letter-spacing:0.1em; margin-bottom:10px;">PROFILE</div>
+                <div class="form-group">
+                    <label>CODENAME</label>
+                    <input type="text" id="settings-username" class="cyber-input" placeholder="USERNAME">
+                </div>
+                <div class="form-group">
+                    <label>BIO</label>
+                    <textarea id="settings-bio" class="cyber-input" placeholder="TELL THE WORLD ABOUT YOURSELF..." rows="2"></textarea>
+                </div>
+                <button class="btn-3d-primary" onclick="app.saveProfile()" style="padding:8px 24px; font-size:11px;">SAVE PROFILE</button>
+            </div>
+            
+            <!-- Security Section -->
+            <div style="border-top:1px solid var(--color-surface-container-high); padding-top:20px;">
+                <div style="font-family:var(--font-label); font-size:11px; color:var(--color-error); letter-spacing:0.1em; margin-bottom:10px;">SECURITY</div>
+                <div class="form-group">
+                    <label>CURRENT ACCESS CODE</label>
+                    <input type="password" id="settings-current-pw" class="cyber-input" placeholder="CURRENT PASSWORD">
+                </div>
+                <div class="form-group">
+                    <label>NEW ACCESS CODE</label>
+                    <input type="password" id="settings-new-pw" class="cyber-input" placeholder="NEW PASSWORD">
+                </div>
+                <button class="btn-danger" onclick="app.changePassword()" style="padding:8px 24px; font-size:11px;">CHANGE PASSWORD</button>
+            </div>
+            
+            <div class="modal-actions" style="margin-top:20px;">
+                <button class="btn-3d" onclick="document.getElementById('settings-modal').style.display='none'" style="padding:12px; width:100%;">CLOSE</button>
             </div>
         </div>
     </div>
