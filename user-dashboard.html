@@ -76,17 +76,17 @@
                 <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
                 QUEST BOARD
             </a>
-            <a class="nav-link" onclick="app.openCreatePublicTaskModal()" style="color:var(--color-primary-fixed-dim);">
+            <a class="nav-link" href="projects.html" style="color:var(--color-primary-fixed-dim);">
                 <span class="material-symbols-outlined">rocket_launch</span>
-                DEPLOY PUBLIC OP
+                PROJECTS
             </a>
             <a class="nav-link" onclick="app.switchUserTab('leaderboard')">
                 <span class="material-symbols-outlined">leaderboard</span>
                 LEADERBOARD
             </a>
             <a class="nav-link" onclick="app.switchUserTab('profile')">
-                <span class="material-symbols-outlined">history</span>
-                HISTORY
+                <span class="material-symbols-outlined">person</span>
+                PROFILE
             </a>
         </nav>
 
@@ -190,53 +190,9 @@
                 </div>
             </div>
 
-            <!-- Bento Grid -->
-            <div style="display:grid; grid-template-columns: 1fr 2fr; gap:var(--gutter);">
-                <!-- Left Column: XP & Stats -->
-                <div style="display:flex; flex-direction:column; gap:var(--gutter);">
-                    <!-- XP Widget -->
-                    <div class="xp-widget input-recessed">
-                        <div class="xp-header">
-                            <div>
-                                <div class="xp-status-label">CURRENT STATUS</div>
-                                <div class="xp-rank-name" id="xp-rank-name">ROOKIE</div>
-                            </div>
-                            <div class="xp-icon-box">
-                                <span class="material-symbols-outlined">star</span>
-                            </div>
-                        </div>
-                        <div class="xp-bar-meta">
-                            <span id="xp-total-display">TOTAL XP: 0</span>
-                            <span id="xp-next-display">NEXT RANK: 1000</span>
-                        </div>
-                        <div class="xp-bar-track">
-                            <div class="xp-bar-fill scanning-bar" id="xp-bar-fill" style="width:0%;"></div>
-                        </div>
-                    </div>
-                    <!-- Quick Stats -->
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
-                        <div class="stat-box input-recessed accent-cyan">
-                            <div class="stat-box-label">MISSIONS COMPLETED</div>
-                            <div class="stat-box-value" id="stat-missions">0</div>
-                        </div>
-                        <div class="stat-box input-recessed accent-magenta">
-                            <div class="stat-box-label">ACTIVE STREAK</div>
-                            <div class="stat-box-value" id="stat-streak">0 DAYS</div>
-                        </div>
-                    </div>
-                    <!-- Badges -->
-                    <div class="glass-panel" style="padding: 16px;">
-                        <h4 style="color:var(--color-primary); font-family:var(--font-label); margin-top:0; margin-bottom:12px; letter-spacing:0.1em;">ACQUIRED BADGES</h4>
-                        <div id="badges-container" style="display:flex; flex-wrap:wrap; gap:10px;">
-                            <span style="color:var(--color-outline-variant); font-size:12px; font-family:var(--font-label);">SCANNING...</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Right Column: Quest Cards -->
-                <div id="quest-grid" style="display:flex; flex-direction:column; gap:24px;">
-                    <!-- Quest cards populated by JS -->
-                </div>
+            <!-- Quest cards only: profile data lives in the Profile section. -->
+            <div id="quest-grid" style="display:flex; flex-direction:column; gap:24px;">
+                <!-- Quest cards populated by JS -->
             </div>
         </section>
 
@@ -265,17 +221,48 @@
             </div>
         </section>
 
-        <!-- TAB: HISTORY/PROFILE -->
+        <!-- TAB: PROFILE -->
         <section id="tab-profile" style="display:none">
             <div class="page-header">
                 <div>
                     <h1>
                         <span class="accent-bar"></span>
-                        MISSION LOG
+                        AGENT PROFILE
                     </h1>
-                    <p class="subtitle">Record of completed and failed operations.</p>
+                    <p class="subtitle">Your rank, achievements, and mission record.</p>
                 </div>
             </div>
+            <div class="xp-widget input-recessed" style="margin-bottom:16px;">
+                <div class="xp-header">
+                    <div>
+                        <div class="xp-status-label">CURRENT STATUS</div>
+                        <div class="xp-rank-name" id="xp-rank-name">ROOKIE</div>
+                    </div>
+                    <div class="xp-icon-box"><span class="material-symbols-outlined">star</span></div>
+                </div>
+                <div class="xp-bar-meta">
+                    <span id="xp-total-display">TOTAL XP: 0</span>
+                    <span id="xp-next-display">NEXT RANK: 100</span>
+                </div>
+                <div class="xp-bar-track"><div class="xp-bar-fill scanning-bar" id="xp-bar-fill" style="width:0%;"></div></div>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:16px; margin-bottom:16px;">
+                <div class="stat-box input-recessed accent-cyan">
+                    <div class="stat-box-label">MISSIONS COMPLETED</div>
+                    <div class="stat-box-value" id="stat-missions">0</div>
+                </div>
+                <div class="stat-box input-recessed accent-magenta">
+                    <div class="stat-box-label">ACTIVE STREAK</div>
+                    <div class="stat-box-value" id="stat-streak">0 DAYS</div>
+                </div>
+            </div>
+            <div class="glass-panel" style="padding:16px; margin-bottom:16px;">
+                <h4 style="color:var(--color-primary); font-family:var(--font-label); margin-top:0; margin-bottom:12px; letter-spacing:0.1em;">ACQUIRED BADGES</h4>
+                <div id="badges-container" style="display:flex; flex-wrap:wrap; gap:10px;">
+                    <span style="color:var(--color-outline-variant); font-size:12px; font-family:var(--font-label);">SCANNING...</span>
+                </div>
+            </div>
+            <h3 style="font-family:var(--font-headline); margin:0 0 12px;">MISSION LOG</h3>
             <div id="history-list" style="display:flex; flex-direction:column; gap:12px;"></div>
         </section>
     </main>

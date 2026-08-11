@@ -457,6 +457,27 @@ def create_task(task: TaskCreate, db: Session = Depends(get_db), current_user: m
     db.commit()
     return {"status": "success"}
 
+@app.get("/api/projects", tags=["Projects"])
+def get_my_projects(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """Return projects created by the authenticated user, newest first."""
+    projects = db.query(models.Task).filter(
+        models.Task.creator_user_id == current_user.user_id
+    ).order_by(models.Task.task_id.desc()).all()
+    return [{
+        "task_id": project.task_id,
+        "title": project.title,
+        "description": project.description,
+        "xp_reward": project.xp_reward,
+        "difficulty": project.difficulty,
+        "category": project.category,
+        "deadline": project.deadline,
+        "status": project.status,
+        "visibility": project.visibility,
+        "active_agents": sum(1 for acceptance in project.acceptances if acceptance.status == 'IN_PROGRESS'),
+        "pending_requests": sum(1 for acceptance in project.acceptances if acceptance.status == 'PENDING'),
+        "submissions": len(project.submissions),
+    } for project in projects]
+
 @app.get("/api/tasks/available", tags=["Tasks"])
 @app.get("/api/tasks", tags=["Tasks"])
 def avail_tasks(

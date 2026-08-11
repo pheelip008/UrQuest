@@ -504,6 +504,7 @@ const app = {
 
     loadReviews: async () => {
         const container = document.getElementById('reviews-list');
+        if (!container) return;
         container.innerHTML = '<div style="text-align:center">SCANNING...</div>';
         try {
             const [acceptanceRequests, reviews] = await Promise.all([
@@ -581,6 +582,8 @@ const app = {
             });
             app.showToast(`AGENT ${action}D`);
             app.loadReviews();
+            app.loadProjectRequests();
+            app.loadProjects();
         } catch (e) {}
     },
     
@@ -960,6 +963,98 @@ const app = {
         if (tab === 'quests') app.loadAvailableTasks();
         if (tab === 'leaderboard') app.loadLeaderboard();
         if (tab === 'profile') app.loadUserProfile();
+    },
+
+    initProjects: async () => {
+        app.initTheme();
+        const session = await app.getSession();
+        if (!session) {
+            window.location.href = 'index.html';
+            return;
+        }
+        app.session = session;
+        app.user = session.user;
+        const userName = document.getElementById('project-username');
+        if (userName) userName.innerText = session.user.username.toUpperCase();
+        const form = document.getElementById('project-create-form');
+        if (form) form.addEventListener('submit', app.createProject);
+        app.initNotifications();
+        app.loadProjects();
+        app.loadProjectRequests();
+    },
+
+    createProject: async (event) => {
+        event.preventDefault();
+        const data = {
+            org_id: null,
+            title: document.getElementById('project-title').value.trim(),
+            description: document.getElementById('project-description').value.trim(),
+            xp_reward: parseInt(document.getElementById('project-xp').value, 10),
+            difficulty: document.getElementById('project-difficulty').value,
+            category: document.getElementById('project-category').value.trim() || null,
+            deadline: document.getElementById('project-deadline').value || null,
+            visibility: 'PUBLIC',
+            assignee_ids: []
+        };
+        try {
+            await app.request('/api/tasks/create', 'POST', data);
+            event.target.reset();
+            document.getElementById('project-xp').value = 50;
+            app.showToast('PROJECT DEPLOYED');
+            app.loadProjects();
+        } catch (e) {}
+    },
+
+    loadProjects: async () => {
+        const container = document.getElementById('project-list');
+        if (!container) return;
+        container.innerHTML = '<div style="color:var(--color-outline-variant); font-family:var(--font-label); font-size:12px; padding:20px;">SCANNING PROJECTS...</div>';
+        try {
+            const projects = await app.request('/api/projects');
+            if (projects.length === 0) {
+                container.innerHTML = '<div class="glass-panel" style="padding:24px; color:var(--color-outline-variant); font-family:var(--font-label); font-size:12px;">NO PROJECTS DEPLOYED YET.</div>';
+                return;
+            }
+            container.innerHTML = projects.map(project => `
+                <article class="glass-panel" style="padding:20px; border-radius:12px;">
+                    <div style="display:flex; justify-content:space-between; gap:16px; align-items:flex-start;">
+                        <div>
+                            <div style="color:var(--color-primary); font-family:var(--font-label); font-size:10px; letter-spacing:0.12em; margin-bottom:6px;">${project.status}</div>
+                            <h3 style="margin:0; color:var(--color-on-surface); font-family:var(--font-headline);">${project.title}</h3>
+                        </div>
+                        <span class="difficulty-badge ${project.difficulty || 'Medium'}">+${project.xp_reward} XP</span>
+                    </div>
+                    <p style="color:var(--color-on-surface-variant); line-height:1.5; margin:12px 0;">${project.description || 'NO BRIEFING PROVIDED.'}</p>
+                    <div style="display:flex; flex-wrap:wrap; gap:14px; color:var(--color-outline-variant); font-family:var(--font-label); font-size:10px; letter-spacing:0.08em;">
+                        <span>${project.category ? project.category.toUpperCase() : 'GENERAL'}</span>
+                        <span>${project.active_agents} ACTIVE AGENTS</span>
+                        <span>${project.pending_requests} PENDING REQUESTS</span>
+                        <span>${project.submissions} SUBMISSIONS</span>
+                    </div>
+                </article>
+            `).join('');
+        } catch (e) {}
+    },
+
+    loadProjectRequests: async () => {
+        const container = document.getElementById('project-request-list');
+        if (!container) return;
+        try {
+            const requests = await app.request('/api/tasks/acceptance-requests');
+            if (requests.length === 0) {
+                container.innerHTML = '<div style="color:var(--color-outline-variant); font-family:var(--font-label); font-size:12px;">NO PENDING ACCEPTANCE REQUESTS.</div>';
+                return;
+            }
+            container.innerHTML = requests.map(request => `
+                <div class="input-recessed" style="padding:14px; display:flex; justify-content:space-between; align-items:center; gap:14px;">
+                    <div><strong>${request.agent_name}</strong><div style="margin-top:4px; color:var(--color-outline-variant); font-size:12px;">requested ${request.task_title}</div></div>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn-3d-primary" style="padding:8px 12px; font-size:10px;" onclick="app.reviewAcceptance(${request.acceptance_id}, 'APPROVE')">APPROVE</button>
+                        <button class="btn-danger" style="padding:8px 12px; font-size:10px;" onclick="app.reviewAcceptance(${request.acceptance_id}, 'REJECT')">REJECT</button>
+                    </div>
+                </div>
+            `).join('');
+        } catch (e) {}
     },
     
     openCreatePublicTaskModal: () => {
