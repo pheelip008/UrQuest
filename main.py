@@ -505,6 +505,9 @@ def accept_task(task_id: int, db: Session = Depends(get_db), current_user: model
     if not task:
         raise HTTPException(status_code=404, detail="Task not found or not open")
 
+    if task.creator_user_id == current_user.user_id:
+        raise HTTPException(status_code=400, detail="Creator cannot accept their own task")
+
     # Check if already accepted
     existing = db.query(models.TaskAcceptance).filter(
         models.TaskAcceptance.task_id == task_id,
@@ -516,6 +519,14 @@ def accept_task(task_id: int, db: Session = Depends(get_db), current_user: model
 
     acc = models.TaskAcceptance(task_id=task_id, user_id=current_user.user_id)
     db.add(acc)
+    
+    # Notify creator
+    notif = models.Notification(
+        user_id=task.creator_user_id,
+        message=f"Agent {current_user.username} has accepted mission: {task.title}"
+    )
+    db.add(notif)
+    
     db.commit()
     return {"status": "success", "message": "Quest Accepted"}
 
@@ -576,6 +587,9 @@ def review(review: ReviewAction, db: Session = Depends(get_db), current_user: mo
     sub.feedback = review.feedback
     
     if status == 'APPROVED':
+        # Close the task
+        sub.task.status = 'COMPLETED'
+        
         u = db.query(models.User).filter(models.User.user_id == sub.user_id).first()
         if u:
             # XP Multiplier based on difficulty
