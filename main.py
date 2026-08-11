@@ -2,6 +2,8 @@ import os
 import json
 import httpx
 import re
+import logging
+from urllib.parse import urlencode
 from datetime import datetime, timedelta
 from typing import List, Optional, Literal
 from fastapi import FastAPI, HTTPException, Body, Depends, Request, Response, UploadFile, File
@@ -11,6 +13,7 @@ import shutil
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_, func
+from sqlalchemy.exc import IntegrityError
 
 import jwt
 from passlib.context import CryptContext
@@ -30,12 +33,24 @@ CLIENT_ORIGIN = os.getenv("CLIENT_ORIGIN", "http://127.0.0.1:5500")
 IS_PRODUCTION = os.getenv("NODE_ENV") == "production" or os.getenv("RENDER") is not None
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+logger = logging.getLogger(__name__)
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password):
     return pwd_context.hash(password)
+
+def get_available_username(db: Session, preferred_username: str) -> str:
+    """Return a non-empty username that will not violate the unique constraint."""
+    base = re.sub(r"\s+", "_", (preferred_username or "google_user").strip())
+    base = re.sub(r"[^a-zA-Z0-9_.-]", "", base)[:100] or "google_user"
+    username = base
+    suffix = 1
+    while db.query(models.User.user_id).filter(models.User.username == username).first():
+        username = f"{base[:95]}_{suffix}"
+        suffix += 1
+    return username
 
 app = FastAPI(
     title="UrQuest API",
@@ -135,6 +150,10 @@ class ReviewAction(BaseModel):
     action: Literal['APPROVE', 'REJECT']
     feedback: Optional[str] = None
 
+class AcceptanceReviewAction(BaseModel):
+    acceptance_id: int
+    action: Literal['APPROVE', 'REJECT']
+
 class CommentCreate(BaseModel):
     content: str
 
@@ -180,56 +199,81 @@ def check_org_task_permission(user_id: str, org_id: int, db: Session):
 
 @app.get("/auth/google")
 def google_login():
-    url = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={GOOGLE_CLIENT_ID}&redirect_uri={GOOGLE_CALLBACK_URL}&response_type=code&scope=email profile"
+    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET or not GOOGLE_CALLBACK_URL:
+        logger.error("Google OAuth is not configured: required environment variables are missing")
+        raise HTTPException(status_code=503, detail="Google login is not configured")
+
+    query = urlencode({
+        "client_id": GOOGLE_CLIENT_ID,
+        "redirect_uri": GOOGLE_CALLBACK_URL,
+        "response_type": "code",
+        "scope": "email profile",
+    })
+    url = f"https://accounts.google.com/o/oauth2/v2/auth?{query}"
     from fastapi.responses import RedirectResponse
     return RedirectResponse(url)
 
 @app.get("/auth/google/callback")
-async def google_callback(code: str, response: Response, db: Session = Depends(get_db)):
-    async with httpx.AsyncClient() as client:
-        # 1. Get access token
-        token_res = await client.post("https://oauth2.googleapis.com/token", data={
-            "client_id": GOOGLE_CLIENT_ID,
-            "client_secret": GOOGLE_CLIENT_SECRET,
-            "code": code,
-            "grant_type": "authorization_code",
-            "redirect_uri": GOOGLE_CALLBACK_URL
-        })
-        token_data = token_res.json()
-        if "access_token" not in token_data:
-            raise HTTPException(status_code=400, detail="Google Auth Failed")
+async def google_callback(code: str, db: Session = Depends(get_db)):
+    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET or not GOOGLE_CALLBACK_URL:
+        logger.error("Google OAuth callback received without complete configuration")
+        raise HTTPException(status_code=503, detail="Google login is not configured")
 
-        # 2. Get user info
-        user_res = await client.get("https://www.googleapis.com/oauth2/v2/userinfo", headers={
-            "Authorization": f"Bearer {token_data['access_token']}"
-        })
-        user_info = user_res.json()
-        email = user_info.get("email")
-        google_id = user_info.get("id")
-        name = user_info.get("name")
-        picture = user_info.get("picture")
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            token_res = await client.post("https://oauth2.googleapis.com/token", data={
+                "client_id": GOOGLE_CLIENT_ID,
+                "client_secret": GOOGLE_CLIENT_SECRET,
+                "code": code,
+                "grant_type": "authorization_code",
+                "redirect_uri": GOOGLE_CALLBACK_URL,
+            })
+            token_res.raise_for_status()
+            token_data = token_res.json()
+            access_token = token_data.get("access_token")
+            if not access_token:
+                logger.error("Google token response did not include an access token: %s", token_data.get("error"))
+                raise HTTPException(status_code=400, detail="Google authentication failed")
 
-        # 3. Find or create user
-        user = db.query(models.User).filter(models.User.email == email).first()
-        if not user:
-            user = models.User(
-                user_id=google_id,
-                username=name or email.split("@")[0],
-                email=email,
-                profile_picture=picture,
-                provider="google"
-            )
+            user_res = await client.get("https://www.googleapis.com/oauth2/v2/userinfo", headers={
+                "Authorization": f"Bearer {access_token}"
+            })
+            user_res.raise_for_status()
+            user_info = user_res.json()
+    except httpx.HTTPError:
+        logger.exception("Google OAuth provider request failed")
+        raise HTTPException(status_code=502, detail="Google authentication service is unavailable")
+
+    email = user_info.get("email")
+    google_id = user_info.get("id")
+    if not email or not google_id:
+        logger.error("Google userinfo response was missing email or id")
+        raise HTTPException(status_code=400, detail="Google did not provide the required account information")
+
+    # An email account may already exist, including one originally registered with a password.
+    user = db.query(models.User).filter(models.User.email == email).first()
+    if not user:
+        user = models.User(
+            user_id=google_id,
+            username=get_available_username(db, user_info.get("name") or email.split("@", 1)[0]),
+            email=email,
+            profile_picture=user_info.get("picture"),
+            provider="google"
+        )
+        try:
             db.add(user)
             db.commit()
             db.refresh(user)
+        except IntegrityError:
+            # Do not leave the session unusable if a concurrent signup used the same identity.
+            db.rollback()
+            logger.exception("Could not create Google user")
+            raise HTTPException(status_code=409, detail="An account with this Google identity already exists")
 
-        # 4. Set Cookie and redirect
-        create_token_cookie(response, user.user_id)
-        
-        from fastapi.responses import RedirectResponse
-        res = RedirectResponse(f"{CLIENT_ORIGIN}/user-dashboard.html")
-        create_token_cookie(res, user.user_id)
-        return res
+    from fastapi.responses import RedirectResponse
+    res = RedirectResponse(f"{CLIENT_ORIGIN.rstrip('/')}/user-dashboard.html")
+    create_token_cookie(res, user.user_id)
+    return res
 
 @app.post("/api/upload", tags=["Upload"])
 async def upload_file(file: UploadFile = File(...), current_user: models.User = Depends(get_current_user)):
@@ -493,8 +537,11 @@ def avail_tasks(
                 "creator_user_id": t.creator_user_id,
                 "org_name": t.creator_org.name if t.creator_org else None,
                 "creator_name": t.creator.username if t.creator else None,
-                "accepted": any(a.user_id == user_id and a.status != 'ABANDONED' for a in t.acceptances) if user_id else False,
-                "acceptance_count": len(t.acceptances)
+                # A request is not an accepted quest until its creator approves it.
+                "acceptance_status": next((a.status for a in sorted(t.acceptances, key=lambda a: a.id, reverse=True) if a.user_id == user_id), None) if user_id else None,
+                "accepted": any(a.user_id == user_id and a.status == 'IN_PROGRESS' for a in t.acceptances) if user_id else False,
+                "acceptance_count": sum(1 for a in t.acceptances if a.status == 'IN_PROGRESS'),
+                "is_creator": t.creator_user_id == user_id
             })
             
     return tasks_res
@@ -508,27 +555,73 @@ def accept_task(task_id: int, db: Session = Depends(get_db), current_user: model
     if task.creator_user_id == current_user.user_id:
         raise HTTPException(status_code=400, detail="Creator cannot accept their own task")
 
+    if task.visibility == 'PRIVATE':
+        assignees = json.loads(task.assignee_ids or '[]')
+        if current_user.user_id not in assignees:
+            raise HTTPException(status_code=403, detail="You are not assigned to this private quest")
+
     # Check if already accepted
     existing = db.query(models.TaskAcceptance).filter(
         models.TaskAcceptance.task_id == task_id,
         models.TaskAcceptance.user_id == current_user.user_id,
-        models.TaskAcceptance.status == 'IN_PROGRESS'
+        models.TaskAcceptance.status.in_(['PENDING', 'IN_PROGRESS', 'SUBMITTED'])
     ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Task already accepted")
 
-    acc = models.TaskAcceptance(task_id=task_id, user_id=current_user.user_id)
+    acc = models.TaskAcceptance(task_id=task_id, user_id=current_user.user_id, status='PENDING')
     db.add(acc)
     
     # Notify creator
     notif = models.Notification(
         user_id=task.creator_user_id,
-        message=f"Agent {current_user.username} has accepted mission: {task.title}"
+        message=f"Agent {current_user.username} requested to accept mission: {task.title}"
     )
     db.add(notif)
     
     db.commit()
-    return {"status": "success", "message": "Quest Accepted"}
+    return {"status": "success", "message": "Acceptance request sent to the quest creator"}
+
+@app.get("/api/tasks/acceptance-requests", tags=["Tasks"])
+def get_acceptance_requests(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """Pending requests for quests created by the authenticated user."""
+    requests = db.query(models.TaskAcceptance).join(models.Task).filter(
+        models.Task.creator_user_id == current_user.user_id,
+        models.TaskAcceptance.status == 'PENDING'
+    ).order_by(models.TaskAcceptance.accepted_at.desc()).all()
+    return [{
+        "acceptance_id": request.id,
+        "task_id": request.task_id,
+        "task_title": request.task.title,
+        "agent_name": request.user.username,
+        "requested_at": request.accepted_at,
+    } for request in requests]
+
+@app.post("/api/tasks/acceptance-requests/review", tags=["Tasks"])
+def review_acceptance_request(
+    review: AcceptanceReviewAction,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    request = db.query(models.TaskAcceptance).filter(models.TaskAcceptance.id == review.acceptance_id).first()
+    if not request:
+        raise HTTPException(status_code=404, detail="Acceptance request not found")
+    if request.task.creator_user_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Only the quest creator can review this request")
+    if request.status != 'PENDING':
+        raise HTTPException(status_code=400, detail="This acceptance request has already been reviewed")
+
+    approved = review.action == 'APPROVE'
+    request.status = 'IN_PROGRESS' if approved else 'REJECTED'
+    db.add(models.Notification(
+        user_id=request.user_id,
+        message=(
+            f"Your request to accept '{request.task.title}' was approved. You can now submit proof."
+            if approved else f"Your request to accept '{request.task.title}' was rejected."
+        )
+    ))
+    db.commit()
+    return {"status": "success", "message": "Acceptance request reviewed"}
 
 @app.post("/api/tasks/{task_id}/comments", tags=["Tasks"])
 def add_comment(task_id: int, comment: CommentCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
@@ -581,6 +674,10 @@ def review(review: ReviewAction, db: Session = Depends(get_db), current_user: mo
     sub = db.query(models.Submission).filter(models.Submission.submission_id == review.submission_id).first()
     if not sub:
         raise HTTPException(status_code=404)
+    if sub.task.creator_user_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Only the quest creator can review this submission")
+    if sub.status != 'PENDING':
+        raise HTTPException(status_code=400, detail="This submission has already been reviewed")
         
     status = 'APPROVED' if review.action == 'APPROVE' else 'REJECTED'
     sub.status = status
@@ -626,8 +723,15 @@ def get_stats(org_id: int, db: Session = Depends(get_db)):
     return {"active_tasks": active, "pending_submissions": pending}
 
 @app.get("/api/org/reviews", tags=["Org"])
-def get_reviews(org_id: int, db: Session = Depends(get_db)):
-    subs = db.query(models.Submission).join(models.Task).filter(models.Task.creator_org_id == org_id, models.Submission.status == 'PENDING').all()
+def get_reviews(org_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    org = db.query(models.Organization).filter(models.Organization.org_id == org_id).first()
+    if not org or org.owner_user_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Only the organization owner can view these reviews")
+    subs = db.query(models.Submission).join(models.Task).filter(
+        models.Task.creator_org_id == org_id,
+        models.Task.creator_user_id == current_user.user_id,
+        models.Submission.status == 'PENDING'
+    ).all()
     res = []
     for s in subs:
         res.append({
@@ -893,4 +997,4 @@ def org_leaderboard(org_id: int, db: Session = Depends(get_db)):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8080)

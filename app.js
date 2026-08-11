@@ -1,5 +1,6 @@
 const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:') 
-    ? 'http://127.0.0.1:8080' 
+    // Keep the local API host aligned with the OAuth callback so its session cookie is sent.
+    ? 'http://localhost:8080'
     : 'https://urquest-api.onrender.com'; 
 
 const app = {
@@ -505,12 +506,32 @@ const app = {
         const container = document.getElementById('reviews-list');
         container.innerHTML = '<div style="text-align:center">SCANNING...</div>';
         try {
-            const reviews = await app.request(`/api/org/reviews?org_id=${app.org.org_id}`);
+            const [acceptanceRequests, reviews] = await Promise.all([
+                app.request('/api/tasks/acceptance-requests'),
+                app.request(`/api/org/reviews?org_id=${app.org.org_id}`)
+            ]);
             container.innerHTML = '';
-            if (reviews.length === 0) {
+            if (acceptanceRequests.length === 0 && reviews.length === 0) {
                 container.innerHTML = '<div style="text-align:center; color:#555;">NO PENDING TRANSMISSIONS</div>';
                 return;
             }
+            acceptanceRequests.forEach(request => {
+                const card = document.createElement('div');
+                card.className = 'glass-panel';
+                card.style.padding = 'var(--margin-mobile)';
+                card.style.marginBottom = '16px';
+                card.style.borderRadius = '12px';
+                card.innerHTML = `
+                    <div style="color:var(--color-tertiary-container); font-family:var(--font-label); font-size:11px; letter-spacing:0.1em; margin-bottom:8px;">ACCEPTANCE REQUEST</div>
+                    <h3 style="color:var(--color-on-surface); margin-bottom:5px; font-family:var(--font-headline); font-size:18px;">${request.task_title}</h3>
+                    <div style="color:var(--color-primary); font-family:var(--font-body); font-size:14px;">AGENT: ${request.agent_name}</div>
+                    <div style="margin-top:1rem; display:flex; gap:10px;">
+                        <button class="btn-3d-primary" style="flex:1" onclick="app.reviewAcceptance(${request.acceptance_id}, 'APPROVE')">APPROVE AGENT</button>
+                        <button class="btn-danger" style="flex:1" onclick="app.reviewAcceptance(${request.acceptance_id}, 'REJECT')">REJECT AGENT</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
             reviews.forEach(sub => {
                 const card = document.createElement('div');
                 card.className = 'glass-panel';
@@ -548,6 +569,17 @@ const app = {
                 feedback: action === 'APPROVE' ? 'Excellent work' : 'Insufficient data'
             });
             app.showToast(`SUBMISSION ${action}D`);
+            app.loadReviews();
+        } catch (e) {}
+    },
+
+    reviewAcceptance: async (id, action) => {
+        try {
+            await app.request('/api/tasks/acceptance-requests/review', 'POST', {
+                acceptance_id: id,
+                action: action
+            });
+            app.showToast(`AGENT ${action}D`);
             app.loadReviews();
         } catch (e) {}
     },
@@ -1004,6 +1036,10 @@ const app = {
                                 <div style="flex:1; border:1px solid var(--color-primary); color:var(--color-primary); display:flex; align-items:center; justify-content:center; font-family:var(--font-label); font-size:12px; letter-spacing:0.1em; background:rgba(0, 255, 128, 0.1);">IN PROGRESS</div>
                                 <button class="btn-ghost" style="flex:1; border-color:var(--color-primary); color:var(--color-on-surface);" onclick="app.openSubmitModal(${task.task_id})">SUBMIT PROOF</button>
                             </div>
+                        ` : task.acceptance_status === 'PENDING' ? `
+                            <div style="width:100%; border:1px solid var(--color-tertiary-container); color:var(--color-tertiary-container); padding:10px; text-align:center; font-family:var(--font-label); font-size:11px; letter-spacing:0.1em;">AWAITING CREATOR APPROVAL</div>
+                        ` : task.is_creator ? `
+                            <div style="width:100%; border:1px solid var(--color-outline-variant); color:var(--color-outline-variant); padding:10px; text-align:center; font-family:var(--font-label); font-size:11px; letter-spacing:0.1em;">YOUR QUEST</div>
                         ` : `
                             <button class="btn-ghost" style="width:100%; border-color:var(--color-outline-variant); color:var(--color-on-surface);" onclick="app.acceptQuest(${task.task_id})">ACCEPT QUEST</button>
                         `}
@@ -1026,7 +1062,7 @@ const app = {
     acceptQuest: async (taskId) => {
         try {
             await app.request(`/api/tasks/${taskId}/accept`, 'POST');
-            app.showToast('QUEST ACCEPTED');
+            app.showToast('ACCEPTANCE REQUEST SENT');
             app.loadAvailableTasks();
         } catch (e) {}
     },
