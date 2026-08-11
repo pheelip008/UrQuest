@@ -18,7 +18,7 @@ from sqlalchemy.exc import IntegrityError
 import jwt
 from passlib.context import CryptContext
 
-from database import get_db, engine, Base
+from database import get_db, engine, Base, upgrade_schema
 import models
 from dotenv import load_dotenv
 
@@ -68,6 +68,7 @@ app.add_middleware(
 
 # Initialize DB (Create tables)
 Base.metadata.create_all(bind=engine)
+upgrade_schema()
 
 os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
