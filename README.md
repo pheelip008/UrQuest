@@ -91,4 +91,5 @@ Contributions are welcome! If you'd like to improve UrQuest, please fork the rep
 
 ## 📝 License
 
-This project is open-source and available under the MIT License.
+meh
+
